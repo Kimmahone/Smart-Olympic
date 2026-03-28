@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>스마트 올림픽: 태권도 송판 격파</title>
+  <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+  <style>
+    body { font-family: 'Jua', sans-serif; text-align: center; background-color: #eeeeee; margin: 0; padding: 20px 10px; display: flex; flex-direction: column; align-items: center;}
+    h1 { color: #333333; margin: 0 0 10px 0; font-size: 2.5em; letter-spacing: 1px;}
+    .header-area { width: 100%; max-width: 1000px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .back-btn { padding: 10px 20px; background-color: #212121; color: white; text-decoration: none; border-radius: 8px; font-size: 1.2em; transition: 0.2s; white-space: nowrap;}
+    .back-btn:hover { background-color: #000000; }
+    #container { position: relative; width: 100%; max-width: 1000px; aspect-ratio: 16 / 9; margin: 0 auto; }
+    canvas { width: 100%; height: 100%; background-color: #bdbdbd; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.3); border: 5px solid #212121; object-fit: cover; box-sizing: border-box; }
+    #overlay, #result-modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(255,255,255,0.95); border-radius: 12px; z-index: 10; border: 5px solid #212121; box-sizing: border-box; }
+    #result-modal { display: none; }
+    button { padding: 15px 30px; font-family: 'Jua', sans-serif; font-size: 1.8em; color: white; background-color: #212121; border: none; border-radius: 10px; cursor: pointer; transition: 0.2s; margin: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+    button:hover { background-color: #000000; transform: scale(1.05); }
+    button:disabled { background-color: #9e9e9e; cursor: not-allowed; box-shadow: none; }
+    #stop-btn { position: absolute; bottom: 20px; right: 20px; display: none; padding: 10px 20px; font-size: 1.5em; background-color: #d32f2f; color: white; z-index: 11; }
+    #stop-btn:hover { background-color: #b71c1c; }
+    input[type="text"] { padding: 15px; font-family: 'Jua', sans-serif; font-size: 1.5em; border-radius: 5px; border: 2px solid #ccc; margin-bottom: 20px; text-align: center; width: 60%; max-width: 300px;}
+    .action-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+    .small-btn { font-size: 1.3em; padding: 10px 20px; background-color: #212121; }
+    .small-btn:hover { background-color: #000000; }
+  </style>
+</head>
+<body>
+  <audio id="bgm" src="media/taekwondo_bgm.mp3" loop crossorigin="anonymous"></audio>
+  <audio id="sfx-count" src="media/countdown.mp3" crossorigin="anonymous"></audio>
+  <audio id="sfx-start" src="media/start.mp3" crossorigin="anonymous"></audio>
+  <audio id="sfx-break" src="media/break.mp3" crossorigin="anonymous"></audio>
+  <audio id="sfx-cheer" src="media/cheer.mp3" crossorigin="anonymous"></audio>
+
+  <div class="header-area">
+    <a href="index.html" class="back-btn">⬅️ 메인으로</a>
+    <h1>🥋 스마트 올림픽: 태권도 송판 격파</h1>
+    <div style="width: 110px;"></div>
+  </div>
+  
+  <div id="container">
+    <video id="input_video" style="display:none;"></video>
+    <canvas id="output_canvas" width="1280" height="720"></canvas>
+    <div id="overlay">
+      <h2 style="color: #333; margin-bottom: 20px; font-size: 3vw;">양 발을 크게 휘저어 송판을 시원하게 깨뜨리세요!</h2>
+      <button id="start-btn" disabled>카메라 연결 중...</button>
+    </div>
+    <div id="result-modal">
+      <h1 style="color: #333; font-size: 5vw; margin: 0;">경기 종료! 🔔</h1>
+      <h2 id="final-record" style="font-size: 4vw; color: #ff9800; margin: 10px 0;">최종 기록: 0점</h2>
+      <input type="text" id="player-name" placeholder="학생 이름을 입력하세요">
+      <div class="action-btns">
+        <button id="save-img-btn" class="small-btn">📸 기록증 저장</button>
+        <button id="save-vid-btn" class="small-btn">🎥 영상 저장</button>
+        <button onclick="resetGame()" class="small-btn" style="background-color: #fbc02d; color:#333;">🔄 다시 하기</button>
+      </div>
+    </div>
+    <button id="stop-btn">🚫 도전 중단</button>
+  </div>
+
+  <script>
+    const videoElement = document.getElementById('input_video');
+    const canvasElement = document.getElementById('output_canvas');
+    const canvasCtx = canvasElement.getContext('2d');
+    const startBtn = document.getElementById('start-btn');
+    const stopBtn = document.getElementById('stop-btn');
+    const overlay = document.getElementById('overlay');
+    const resultModal = document.getElementById('result-modal');
+    
+    function playSound(id) { const s = document.getElementById(id); if(s){ s.currentTime = 0; s.play().catch(e=>console.log(e)); } }
+
+    let gameState = 'waiting'; let hitCount = 0; let startTime = 0; let timeLeftStr = "30.00"; 
+    let countdownTick = 3; let countdownDisplay = "3"; let countdownInterval = null;
+    let mediaRecorder; let recordedChunks = [];
+    let targets = []; let hitEffects = []; 
+
+    // 🌟 오디오 라우팅
+    let audioCtx; let audioDest;
+    function initAudioRecording() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        audioDest = audioCtx.createMediaStreamDestination();
+        document.querySelectorAll('audio').forEach(audioEl => {
+          if (!audioEl.dataset.connected) {
+            const source = audioCtx.createMediaElementSource(audioEl);
+            source.connect(audioDest); source.connect(audioCtx.destination); 
+            audioEl.dataset.connected = "true";
+          }
+        });
+      }
+      if(audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function spawnTarget() { targets.push({ x: Math.random() * 0.6 + 0.2, y: Math.random() * 0.5 + 0.2, radius: 0.12, createdAt: Date.now() }); }
+
+    startBtn.addEventListener('click', () => {
+      startRecording(); gameState = 'countdown'; countdownTick = 3; countdownDisplay = "3";
+      overlay.style.display = 'none'; stopBtn.style.display = 'block';
+      
+      const bgm = document.getElementById('bgm'); bgm.volume = 0.2; bgm.play();
+      playSound('sfx-count');
+
+      countdownInterval = setInterval(() => {
+        countdownTick--;
+        if (countdownTick > 0) { countdownDisplay = countdownTick.toString(); } 
+        else if (countdownTick === 0) { countdownDisplay = "Fight!"; playSound('sfx-start'); } 
+        else { clearInterval(countdownInterval); gameState = 'playing'; startTime = Date.now(); bgm.volume = 0.6; spawnTarget(); spawnTarget(); spawnTarget(); }
+      }, 500); // 🌟 500ms
+    });
+
+    stopBtn.addEventListener('click', () => { resetGame(); });
+
+    function resetGame() {
+      if (gameState === 'countdown') clearInterval(countdownInterval);
+      if (gameState === 'playing' || gameState === 'countdown') stopRecording();
+      document.getElementById('bgm').pause(); document.getElementById('bgm').currentTime = 0;
+      gameState = 'waiting'; hitCount = 0; targets = []; hitEffects = []; timeLeftStr = "30.00";
+      previousLeftAnkle = null; previousRightAnkle = null;
+      overlay.style.display = 'flex'; resultModal.style.display = 'none'; stopBtn.style.display = 'none';
+    }
+
+    let previousLeftAnkle = null; let previousRightAnkle = null;
+
+    function onResults(results) {
+      canvasCtx.save(); canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height); canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+      const cw = canvasElement.width; const ch = canvasElement.height;
+
+      if (results.poseLandmarks) {
+        drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, {color: '#FFFFFF', lineWidth: 4});
+        drawLandmarks(canvasCtx, results.poseLandmarks, {color: '#424242', lineWidth: 2, radius: (data) => { return (data.index === 27 || data.index === 28) ? 30 : 5; }});
+
+        if (gameState === 'playing') {
+          const lm = results.poseLandmarks; const velocityThreshold = 0.03; 
+          let leftAnkleVelocity = 0; if (previousLeftAnkle) { leftAnkleVelocity = Math.hypot(lm[27].x - previousLeftAnkle.x, lm[27].y - previousLeftAnkle.y); }
+          let rightAnkleVelocity = 0; if (previousRightAnkle) { rightAnkleVelocity = Math.hypot(lm[28].x - previousRightAnkle.x, lm[28].y - previousRightAnkle.y); }
+          previousLeftAnkle = { x: lm[27].x, y: lm[27].y }; previousRightAnkle = { x: lm[28].x, y: lm[28].y };
+
+          for (let i = targets.length - 1; i >= 0; i--) {
+            let t = targets[i]; let distLeft = Math.hypot(lm[27].x - t.x, lm[27].y - t.y); let distRight = Math.hypot(lm[28].x - t.x, lm[28].y - t.y);
+            const isLeftHit = distLeft < t.radius && leftAnkleVelocity > velocityThreshold; const isRightHit = distRight < t.radius && rightAnkleVelocity > velocityThreshold;
+
+            if (isLeftHit || isRightHit) {
+              hitCount++; hitEffects.push({ x: t.x, y: t.y, time: Date.now() }); targets.splice(i, 1); spawnTarget(); playSound('sfx-break'); 
+            } else {
+              const tx = t.x * cw; const ty = t.y * ch; const boardWidth = t.radius * cw * 1.6; const boardHeight = t.radius * ch * 1.0;
+              canvasCtx.save(); canvasCtx.translate(tx, ty);
+              canvasCtx.fillStyle = "#A1887F"; canvasCtx.strokeStyle = "#5D4037"; canvasCtx.lineWidth = 6;
+              canvasCtx.fillRect(-boardWidth / 2, -boardHeight / 2, boardWidth, boardHeight); canvasCtx.strokeRect(-boardWidth / 2, -boardHeight / 2, boardWidth, boardHeight);
+              canvasCtx.strokeStyle = "rgba(0,0,0,0.1)"; canvasCtx.lineWidth = 3;
+              for(let j=0; j<3; j++) { let yOffset = (j - 1) * (boardHeight / 4); canvasCtx.beginPath(); canvasCtx.moveTo(-boardWidth/2 + 10, yOffset); canvasCtx.lineTo(boardWidth/2 - 10, yOffset); canvasCtx.stroke(); }
+              canvasCtx.strokeStyle = "white"; canvasCtx.lineWidth = 4; canvasCtx.setLineDash([15, 8]); canvasCtx.beginPath(); canvasCtx.moveTo(0, -boardHeight / 2 + 10); canvasCtx.lineTo(0, boardHeight / 2 - 10); canvasCtx.stroke(); canvasCtx.setLineDash([]);
+              canvasCtx.restore();
+            }
+          }
+          for (let i = hitEffects.length - 1; i >= 0; i--) {
+            let effect = hitEffects[i]; if (Date.now() - effect.time > 300) { hitEffects.splice(i, 1); } else { canvasCtx.font = "180px sans-serif"; canvasCtx.textAlign = "center"; canvasCtx.textBaseline = "middle"; canvasCtx.fillText("💥", effect.x * cw, effect.y * ch); }
+          }
+        }
+      }
+      canvasCtx.restore(); drawUI(); 
+    }
+
+    function drawUI() {
+      const cw = canvasElement.width; const ch = canvasElement.height;
+      function setTextStyle(fontSize, color, align, base) { canvasCtx.font = `${fontSize} 'Jua', sans-serif`; canvasCtx.fillStyle = color; canvasCtx.textAlign = align; canvasCtx.textBaseline = base; canvasCtx.strokeStyle = "rgba(0,0,0,0.8)"; canvasCtx.lineWidth = 8; }
+      if (gameState === 'countdown') { setTextStyle("200px", "#ffeb3b", "center", "middle"); canvasCtx.strokeText(countdownDisplay, cw / 2, ch / 2); canvasCtx.fillText(countdownDisplay, cw / 2, ch / 2); } 
+      else if (gameState === 'playing' || gameState === 'finished') {
+        if (gameState === 'playing') { 
+          let elapsed = (Date.now() - startTime) / 1000; let timeLeft = Math.max(0, 30 - elapsed); timeLeftStr = timeLeft.toFixed(2);
+          if (timeLeft <= 0) {
+            gameState = 'finished'; stopRecording(); stopBtn.style.display = 'none';
+            document.getElementById('bgm').pause(); playSound('sfx-cheer'); 
+            document.getElementById('final-record').innerText = `최종 점수: ${hitCount}점`; resultModal.style.display = 'flex';
+          }
+        }
+        let timeColor = parseFloat(timeLeftStr) <= 5.00 ? "#ff1744" : "#ffeb3b";
+        setTextStyle("70px", timeColor, "right", "top"); canvasCtx.strokeText(`⏳ ${timeLeftStr}초`, cw - 30, 30); canvasCtx.fillText(`⏳ ${timeLeftStr}초`, cw - 30, 30);
+        setTextStyle("80px", "#ffeb3b", "left", "top"); canvasCtx.strokeText(`🥋 격파: ${hitCount}점`, 30, 30); canvasCtx.fillText(`🥋 격파: ${hitCount}점`, 30, 30);
+      }
+    }
+
+    // 🌟 오디오 병합 녹화
+    function startRecording() { 
+      recordedChunks = []; initAudioRecording(); 
+      const canvasStream = canvasElement.captureStream(30); 
+      const combinedStream = new MediaStream([ ...canvasStream.getVideoTracks(), ...audioDest.stream.getAudioTracks() ]);
+      let options = { mimeType: 'video/webm' }; if (MediaRecorder.isTypeSupported('video/mp4')) { options = { mimeType: 'video/mp4' }; } 
+      mediaRecorder = new MediaRecorder(combinedStream, options); mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); }; mediaRecorder.start(); 
+    }
+    
+    function stopRecording() { if(mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop(); }
+    document.getElementById('save-vid-btn').addEventListener('click', () => { const actualMimeType = mediaRecorder.mimeType || 'video/webm'; const ext = actualMimeType.includes('mp4') ? 'mp4' : 'webm'; const blob = new Blob(recordedChunks, { type: actualMimeType }); const url = URL.createObjectURL(blob); const name = document.getElementById('player-name').value || "선수"; const a = document.createElement('a'); a.href = url; a.download = `스마트올림픽_${name}_태권도.${ext}`; a.click(); });
+    document.getElementById('save-img-btn').addEventListener('click', () => { const name = document.getElementById('player-name').value || "선수"; const cw = canvasElement.width; const ch = canvasElement.height; canvasCtx.font = "80px 'Jua', sans-serif"; canvasCtx.textAlign = "center"; canvasCtx.fillStyle = "yellow"; canvasCtx.strokeStyle = "black"; canvasCtx.lineWidth = 6; canvasCtx.strokeText(`🏆 ${name}의 격파 기록: ${hitCount}점`, cw / 2, ch - 50); canvasCtx.fillText(`🏆 ${name}의 격파 기록: ${hitCount}점`, cw / 2, ch - 50); const imgData = canvasElement.toDataURL("image/png"); const a = document.createElement('a'); a.href = imgData; a.download = `스마트올림픽_${name}_기록증.png`; a.click(); });
+    
+    const pose = new Pose({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`}); pose.setOptions({ selfieMode: true, modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 }); pose.onResults(onResults);
+    const camera = new Camera(videoElement, { onFrame: async () => { await pose.send({image: videoElement}); }, width: 1280, height: 720 }); 
+    camera.start().then(() => { startBtn.disabled = false; startBtn.innerText = "격파 시작!"; }).catch(e => { startBtn.innerText = "카메라 오류"; });
+  </script>
+</body>
+</html>
