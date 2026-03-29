@@ -2,202 +2,370 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>스마트 올림픽: 태권도 송판 격파</title>
-  <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+  
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+  
+  <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+  
   <style>
-    body { font-family: 'Jua', sans-serif; text-align: center; background-color: #eeeeee; margin: 0; padding: 20px 10px; display: flex; flex-direction: column; align-items: center;}
-    h1 { color: #333333; margin: 0 0 10px 0; font-size: 2.5em; letter-spacing: 1px;}
-    .header-area { width: 100%; max-width: 1000px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-    .back-btn { padding: 10px 20px; background-color: #212121; color: white; text-decoration: none; border-radius: 8px; font-size: 1.2em; transition: 0.2s; white-space: nowrap;}
-    .back-btn:hover { background-color: #000000; }
-    #container { position: relative; width: 100%; max-width: 1000px; aspect-ratio: 16 / 9; margin: 0 auto; }
-    canvas { width: 100%; height: 100%; background-color: #bdbdbd; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.3); border: 5px solid #212121; object-fit: cover; box-sizing: border-box; }
-    #overlay, #result-modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(255,255,255,0.95); border-radius: 12px; z-index: 10; border: 5px solid #212121; box-sizing: border-box; }
-    #result-modal { display: none; }
-    button { padding: 15px 30px; font-family: 'Jua', sans-serif; font-size: 1.8em; color: white; background-color: #212121; border: none; border-radius: 10px; cursor: pointer; transition: 0.2s; margin: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
-    button:hover { background-color: #000000; transform: scale(1.05); }
-    button:disabled { background-color: #9e9e9e; cursor: not-allowed; box-shadow: none; }
-    #stop-btn { position: absolute; bottom: 20px; right: 20px; display: none; padding: 10px 20px; font-size: 1.5em; background-color: #d32f2f; color: white; z-index: 11; }
-    #stop-btn:hover { background-color: #b71c1c; }
-    input[type="text"] { padding: 15px; font-family: 'Jua', sans-serif; font-size: 1.5em; border-radius: 5px; border: 2px solid #ccc; margin-bottom: 20px; text-align: center; width: 60%; max-width: 300px;}
-    .action-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
-    .small-btn { font-size: 1.3em; padding: 10px 20px; background-color: #212121; }
-    .small-btn:hover { background-color: #000000; }
+    body { font-family: 'Jua', sans-serif; margin: 0; overflow: hidden; background-color: #111; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; color: white; }
+    
+    .header-area { position: absolute; top: 20px; width: 100%; text-align: center; z-index: 10; transition: opacity 0.3s; }
+    h1 { margin: 0; font-size: 2.5em; color: #ffeb3b; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
+    
+    .top-home-btn { position: absolute; top: 20px; left: 20px; background: rgba(255,255,255,0.2); color: white; text-decoration: none; padding: 10px 20px; border-radius: 50px; font-size: 1.2em; z-index: 15; transition: opacity 0.3s, background 0.3s; }
+    .top-home-btn:hover { background: rgba(255,255,255,0.4); }
+
+    .canvas-container { position: relative; width: 100%; max-width: 1280px; aspect-ratio: 16/9; background: #000; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border-radius: 15px; overflow: hidden; }
+    canvas { width: 100%; height: 100%; object-fit: cover; display: block; } 
+    video { display: none; }
+    
+    .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 20; }
+    .overlay h2 { font-size: 3.5em; margin-bottom: 30px; text-align: center; line-height: 1.3; color: white; text-shadow: 2px 2px 5px rgba(0,0,0,0.5); }
+    
+    button { font-family: 'Jua', sans-serif; font-size: 1.8em; padding: 15px 40px; border: none; border-radius: 50px; cursor: pointer; transition: transform 0.2s; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+    #start-btn { background: #ffeb3b; color: #333; }
+    button:hover { transform: scale(1.05); }
+    
+    #stop-btn { position: absolute; bottom: 20px; right: 20px; background: #DF0024; color: white; font-size: 1.2em; padding: 10px 20px; display: none; z-index: 10; }
+    
+    .modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 30; }
+    .modal-content { background: white; color: #333; padding: 40px; border-radius: 30px; text-align: center; width: 80%; max-width: 500px; }
+    .modal-content h2 { color: #333; font-size: 3em; margin-top: 0; }
+    .record-text { font-size: 2.5em; margin: 20px 0; color: #ff9800; }
+    input[type="text"] { font-family: 'Jua', sans-serif; font-size: 1.5em; padding: 10px; width: 90%; text-align: center; border: 2px solid #ccc; border-radius: 15px; margin-bottom: 20px; }
+    
+    .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+    .btn-group button { font-size: 1.1em; padding: 12px; border-radius: 15px; }
+    .save-vid { background: #009F3D; color: white; }
+    .save-img { background: #0085C7; color: white; }
+    
+    .replay-btn { background: #ff9800; color: white; width: 100%; margin-bottom: 10px; }
+    .exit-btn { background: #757575; color: white; width: 100%; font-size: 1.5em; text-decoration: none; display: block; padding: 15px 0; border-radius: 50px; }
   </style>
 </head>
 <body>
-  <audio id="bgm" src="media/taekwondo_bgm.mp3" loop crossorigin="anonymous"></audio>
-  <audio id="sfx-count" src="media/countdown.mp3" crossorigin="anonymous"></audio>
-  <audio id="sfx-start" src="media/start.mp3" crossorigin="anonymous"></audio>
-  <audio id="sfx-break" src="media/break.mp3" crossorigin="anonymous"></audio>
-  <audio id="sfx-cheer" src="media/cheer.mp3" crossorigin="anonymous"></audio>
 
-  <div class="header-area">
-    <a href="index.html" class="back-btn">⬅️ 메인으로</a>
+  <audio id="bgm" src="media/taekwondo_bgm.mp3" loop></audio>
+  <audio id="sfx-count" src="media/countdown.mp3"></audio>
+  <audio id="sfx-start" src="media/start.mp3"></audio>
+  <audio id="sfx-break" src="media/break.mp3"></audio>
+  <audio id="sfx-cheer" src="media/cheer.mp3"></audio>
+
+  <div id="ui-header" class="header-area">
     <h1>🥋 스마트 올림픽: 태권도 송판 격파</h1>
-    <div style="width: 110px;"></div>
   </div>
-  
-  <div id="container">
-    <video id="input_video" style="display:none;"></video>
-    <canvas id="output_canvas" width="1280" height="720"></canvas>
-    <div id="overlay">
-      <h2 style="color: #333; margin-bottom: 20px; font-size: 3vw;">양 발을 크게 휘저어 송판을 시원하게 깨뜨리세요!</h2>
-      <button id="start-btn" disabled>카메라 연결 중...</button>
+  <a id="ui-home" href="index.html" class="top-home-btn">🏠 메인으로</a>
+
+  <div class="canvas-container">
+    <video id="input_video"></video>
+    <canvas id="output_canvas"></canvas>
+    
+    <div id="overlay" class="overlay">
+      <h2>양 발을 힘차게 뻗어<br>송판을 시원하게 깨뜨리세요!</h2>
+      <button id="start-btn">도전 시작!</button>
     </div>
-    <div id="result-modal">
-      <h1 style="color: #333; font-size: 5vw; margin: 0;">경기 종료! 🔔</h1>
-      <h2 id="final-record" style="font-size: 4vw; color: #ff9800; margin: 10px 0;">최종 기록: 0점</h2>
-      <input type="text" id="player-name" placeholder="학생 이름을 입력하세요">
-      <div class="action-btns">
-        <button id="save-img-btn" class="small-btn">📸 기록증 저장</button>
-        <button id="save-vid-btn" class="small-btn">🎥 영상 저장</button>
-        <button onclick="resetGame()" class="small-btn" style="background-color: #fbc02d; color:#333;">🔄 다시 하기</button>
+    
+    <button id="stop-btn">중단하기</button>
+
+    <div id="result-modal" class="modal">
+      <div class="modal-content">
+        <h2>경기 종료! 🔔</h2>
+        <div id="final-record" class="record-text">최종 기록: 0점</div>
+        <input type="text" id="player-name" placeholder="선수 이름을 적어주세요">
+        <div class="btn-group">
+          <button id="save-vid-btn" class="save-vid">🎥 영상 저장</button>
+          <button id="save-img-btn" class="save-img">📸 사진 저장</button>
+        </div>
+        <button id="replay-btn" class="replay-btn">🔄 다시 도전하기</button>
+        <a href="index.html" class="exit-btn">🏠 메인 화면으로</a>
       </div>
     </div>
-    <button id="stop-btn">🚫 도전 중단</button>
   </div>
 
   <script>
     const videoElement = document.getElementById('input_video');
     const canvasElement = document.getElementById('output_canvas');
+    canvasElement.width = 1280; canvasElement.height = 720;
     const canvasCtx = canvasElement.getContext('2d');
+    
+    const uiHeader = document.getElementById('ui-header');
+    const uiHome = document.getElementById('ui-home');
     const startBtn = document.getElementById('start-btn');
     const stopBtn = document.getElementById('stop-btn');
+    const replayBtn = document.getElementById('replay-btn');
     const overlay = document.getElementById('overlay');
     const resultModal = document.getElementById('result-modal');
+
+    const recordCanvas = document.createElement('canvas');
+    recordCanvas.width = 1280; recordCanvas.height = 720;
+    const recordCtx = recordCanvas.getContext('2d');
+
+    function playSound(id) { 
+      const s = document.getElementById(id); 
+      if(s){ s.currentTime = 0; s.play().catch(e => console.warn(e)); } 
+    }
+
+    const COUNTDOWN_SPEED = 500; 
+    let gameState = 'waiting'; let hitCount = 0; let timeLeftStr = "30.00"; let startTime = 0;
+    let countdownTick = 3; let countdownDisplay = ""; let countdownInterval = null;
     
-    function playSound(id) { const s = document.getElementById(id); if(s){ s.currentTime = 0; s.play().catch(e=>console.log(e)); } }
+    // 🌟 오리지널 변수 복구 (타겟, 이펙트, 속도 측정을 위한 이전 발목 위치)
+    let targets = []; 
+    let hitEffects = []; 
+    let previousLeftAnkle = null; 
+    let previousRightAnkle = null;
 
-    let gameState = 'waiting'; let hitCount = 0; let startTime = 0; let timeLeftStr = "30.00"; 
-    let countdownTick = 3; let countdownDisplay = "3"; let countdownInterval = null;
     let mediaRecorder; let recordedChunks = [];
-    let targets = []; let hitEffects = []; 
+    let audioCtx; let audioDest; let globalMicStream = null;
 
-    // 🌟 오디오 라우팅
-    let audioCtx; let audioDest;
-    function initAudioRecording() {
+    async function initAudio() {
       if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         audioDest = audioCtx.createMediaStreamDestination();
-        document.querySelectorAll('audio').forEach(audioEl => {
-          if (!audioEl.dataset.connected) {
-            const source = audioCtx.createMediaElementSource(audioEl);
-            source.connect(audioDest); source.connect(audioCtx.destination); 
-            audioEl.dataset.connected = "true";
+        try {
+          globalMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const micSource = audioCtx.createMediaStreamSource(globalMicStream);
+          const micGain = audioCtx.createGain(); micGain.gain.value = 3.0; // 목소리 증폭
+          micSource.connect(micGain); micGain.connect(audioDest);
+        } catch (e) {}
+        const gameGain = audioCtx.createGain(); gameGain.gain.value = 0.4; // 게임 볼륨
+        gameGain.connect(audioDest); gameGain.connect(audioCtx.destination);
+        document.querySelectorAll('audio').forEach(el => {
+          if (!el.dataset.routed) {
+            const source = audioCtx.createMediaElementSource(el);
+            source.connect(gameGain); el.dataset.routed = "true";
           }
         });
       }
-      if(audioCtx.state === 'suspended') audioCtx.resume();
+      await audioCtx.resume();
     }
 
-    function spawnTarget() { targets.push({ x: Math.random() * 0.6 + 0.2, y: Math.random() * 0.5 + 0.2, radius: 0.12, createdAt: Date.now() }); }
+    function spawnTarget() { 
+      // 타겟(송판)이 화면 위쪽에 랜덤하게 생성되도록
+      targets.push({ x: Math.random() * 0.6 + 0.2, y: Math.random() * 0.5 + 0.2, radius: 0.12, createdAt: Date.now() }); 
+    }
 
-    startBtn.addEventListener('click', () => {
-      startRecording(); gameState = 'countdown'; countdownTick = 3; countdownDisplay = "3";
-      overlay.style.display = 'none'; stopBtn.style.display = 'block';
+    stopBtn.addEventListener('click', () => { location.reload(); });
+
+    replayBtn.addEventListener('click', () => {
+      resultModal.style.display = 'none';
+      overlay.style.display = 'flex';
+      startBtn.disabled = false;
+      startBtn.innerText = "도전 시작!";
+      gameState = 'waiting';
+    });
+
+    startBtn.addEventListener('click', async () => {
+      startBtn.disabled = true;
+      await initAudio();
+      startGameCycle();
+    });
+
+    function startGameCycle() {
+      overlay.style.display = 'none'; 
+      uiHeader.style.opacity = '0';
+      uiHome.style.opacity = '0';
+      stopBtn.style.display = 'block';
+
+      // 변수 초기화
+      hitCount = 0; timeLeftStr = "30.00"; targets = []; hitEffects = [];
+      previousLeftAnkle = null; previousRightAnkle = null;
+      gameState = 'countdown'; countdownTick = 3; countdownDisplay = "3";
       
-      const bgm = document.getElementById('bgm'); bgm.volume = 0.2; bgm.play();
-      playSound('sfx-count');
+      playSound('sfx-count'); 
 
       countdownInterval = setInterval(() => {
         countdownTick--;
-        if (countdownTick > 0) { countdownDisplay = countdownTick.toString(); } 
-        else if (countdownTick === 0) { countdownDisplay = "Fight!"; playSound('sfx-start'); } 
-        else { clearInterval(countdownInterval); gameState = 'playing'; startTime = Date.now(); bgm.volume = 0.6; spawnTarget(); spawnTarget(); spawnTarget(); }
-      }, 500); // 🌟 500ms
-    });
+        if (countdownTick > 0) {
+          countdownDisplay = countdownTick.toString();
+        } else if (countdownTick === 0) {
+          countdownDisplay = "FIGHT!";
+          playSound('sfx-start');
+        } else {
+          clearInterval(countdownInterval);
+          gameState = 'playing';
+          startTime = Date.now();
+          
+          const bgm = document.getElementById('bgm');
+          if(bgm) { bgm.currentTime = 0; bgm.play(); }
 
-    stopBtn.addEventListener('click', () => { resetGame(); });
-
-    function resetGame() {
-      if (gameState === 'countdown') clearInterval(countdownInterval);
-      if (gameState === 'playing' || gameState === 'countdown') stopRecording();
-      document.getElementById('bgm').pause(); document.getElementById('bgm').currentTime = 0;
-      gameState = 'waiting'; hitCount = 0; targets = []; hitEffects = []; timeLeftStr = "30.00";
-      previousLeftAnkle = null; previousRightAnkle = null;
-      overlay.style.display = 'flex'; resultModal.style.display = 'none'; stopBtn.style.display = 'none';
+          // 시작과 동시에 송판 3개 띄우기
+          spawnTarget(); spawnTarget(); spawnTarget();
+          
+          startRecording();
+        }
+      }, COUNTDOWN_SPEED);
     }
 
-    let previousLeftAnkle = null; let previousRightAnkle = null;
+    // 🌟 오리지널 송판 그리기 함수 (화면 & 녹화 캔버스 모두 적용)
+    function drawBoard(ctx, t, cw, ch) {
+      const tx = t.x * cw; const ty = t.y * ch; 
+      const boardWidth = t.radius * cw * 1.6; const boardHeight = t.radius * ch * 1.0;
+      
+      ctx.save(); 
+      ctx.translate(tx, ty);
+      // 나무 질감 배경
+      ctx.fillStyle = "#A1887F"; ctx.strokeStyle = "#5D4037"; ctx.lineWidth = 6;
+      ctx.fillRect(-boardWidth / 2, -boardHeight / 2, boardWidth, boardHeight); 
+      ctx.strokeRect(-boardWidth / 2, -boardHeight / 2, boardWidth, boardHeight);
+      
+      // 나무결 선
+      ctx.strokeStyle = "rgba(0,0,0,0.1)"; ctx.lineWidth = 3;
+      for(let j=0; j<3; j++) { 
+        let yOffset = (j - 1) * (boardHeight / 4); 
+        ctx.beginPath(); ctx.moveTo(-boardWidth/2 + 10, yOffset); ctx.lineTo(boardWidth/2 - 10, yOffset); ctx.stroke(); 
+      }
+      
+      // 깨지는 중앙 절취선
+      ctx.strokeStyle = "white"; ctx.lineWidth = 4; ctx.setLineDash([15, 8]); 
+      ctx.beginPath(); ctx.moveTo(0, -boardHeight / 2 + 10); ctx.lineTo(0, boardHeight / 2 - 10); ctx.stroke(); 
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
 
     function onResults(results) {
-      canvasCtx.save(); canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height); canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
-      const cw = canvasElement.width; const ch = canvasElement.height;
+      if (!results.image) return;
+      const cw = 1280; const ch = 720;
+      
+      canvasCtx.drawImage(results.image, 0, 0, cw, ch);
+      recordCtx.drawImage(results.image, 0, 0, cw, ch);
 
       if (results.poseLandmarks) {
+        canvasCtx.save();
+        canvasCtx.globalAlpha = 0.5;
+        // 발차기를 강조하기 위해 발목(27, 28) 관절 크기를 크게 표시!
         drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, {color: '#FFFFFF', lineWidth: 4});
-        drawLandmarks(canvasCtx, results.poseLandmarks, {color: '#424242', lineWidth: 2, radius: (data) => { return (data.index === 27 || data.index === 28) ? 30 : 5; }});
+        drawLandmarks(canvasCtx, results.poseLandmarks, {
+          color: '#ff9800', lineWidth: 2, 
+          radius: (data) => { return (data.index === 27 || data.index === 28) ? 20 : 5; } 
+        });
+        canvasCtx.restore();
 
+        // 🌟 송판 격파 및 속도(Velocity) 측정 로직 완벽 복원
         if (gameState === 'playing') {
-          const lm = results.poseLandmarks; const velocityThreshold = 0.03; 
-          let leftAnkleVelocity = 0; if (previousLeftAnkle) { leftAnkleVelocity = Math.hypot(lm[27].x - previousLeftAnkle.x, lm[27].y - previousLeftAnkle.y); }
-          let rightAnkleVelocity = 0; if (previousRightAnkle) { rightAnkleVelocity = Math.hypot(lm[28].x - previousRightAnkle.x, lm[28].y - previousRightAnkle.y); }
-          previousLeftAnkle = { x: lm[27].x, y: lm[27].y }; previousRightAnkle = { x: lm[28].x, y: lm[28].y };
+          const lm = results.poseLandmarks; 
+          const velocityThreshold = 0.03; // 발이 일정 속도 이상으로 움직여야 깨짐
+          
+          let leftAnkleVelocity = 0; 
+          if (previousLeftAnkle) { leftAnkleVelocity = Math.hypot(lm[27].x - previousLeftAnkle.x, lm[27].y - previousLeftAnkle.y); }
+          let rightAnkleVelocity = 0; 
+          if (previousRightAnkle) { rightAnkleVelocity = Math.hypot(lm[28].x - previousRightAnkle.x, lm[28].y - previousRightAnkle.y); }
+          
+          previousLeftAnkle = { x: lm[27].x, y: lm[27].y }; 
+          previousRightAnkle = { x: lm[28].x, y: lm[28].y };
 
           for (let i = targets.length - 1; i >= 0; i--) {
-            let t = targets[i]; let distLeft = Math.hypot(lm[27].x - t.x, lm[27].y - t.y); let distRight = Math.hypot(lm[28].x - t.x, lm[28].y - t.y);
-            const isLeftHit = distLeft < t.radius && leftAnkleVelocity > velocityThreshold; const isRightHit = distRight < t.radius && rightAnkleVelocity > velocityThreshold;
+            let t = targets[i]; 
+            let distLeft = Math.hypot(lm[27].x - t.x, lm[27].y - t.y); 
+            let distRight = Math.hypot(lm[28].x - t.x, lm[28].y - t.y);
+            
+            // 거리가 가깝고 AND 발 속도가 빨라야 격파 인정!
+            const isLeftHit = distLeft < t.radius && leftAnkleVelocity > velocityThreshold; 
+            const isRightHit = distRight < t.radius && rightAnkleVelocity > velocityThreshold;
 
             if (isLeftHit || isRightHit) {
-              hitCount++; hitEffects.push({ x: t.x, y: t.y, time: Date.now() }); targets.splice(i, 1); spawnTarget(); playSound('sfx-break'); 
+              hitCount += 10; // 점수 추가
+              hitEffects.push({ x: t.x, y: t.y, time: Date.now() }); 
+              targets.splice(i, 1); 
+              spawnTarget(); 
+              playSound('sfx-break'); 
             } else {
-              const tx = t.x * cw; const ty = t.y * ch; const boardWidth = t.radius * cw * 1.6; const boardHeight = t.radius * ch * 1.0;
-              canvasCtx.save(); canvasCtx.translate(tx, ty);
-              canvasCtx.fillStyle = "#A1887F"; canvasCtx.strokeStyle = "#5D4037"; canvasCtx.lineWidth = 6;
-              canvasCtx.fillRect(-boardWidth / 2, -boardHeight / 2, boardWidth, boardHeight); canvasCtx.strokeRect(-boardWidth / 2, -boardHeight / 2, boardWidth, boardHeight);
-              canvasCtx.strokeStyle = "rgba(0,0,0,0.1)"; canvasCtx.lineWidth = 3;
-              for(let j=0; j<3; j++) { let yOffset = (j - 1) * (boardHeight / 4); canvasCtx.beginPath(); canvasCtx.moveTo(-boardWidth/2 + 10, yOffset); canvasCtx.lineTo(boardWidth/2 - 10, yOffset); canvasCtx.stroke(); }
-              canvasCtx.strokeStyle = "white"; canvasCtx.lineWidth = 4; canvasCtx.setLineDash([15, 8]); canvasCtx.beginPath(); canvasCtx.moveTo(0, -boardHeight / 2 + 10); canvasCtx.lineTo(0, boardHeight / 2 - 10); canvasCtx.stroke(); canvasCtx.setLineDash([]);
-              canvasCtx.restore();
+              // 송판 그리기
+              drawBoard(canvasCtx, t, cw, ch);
+              drawBoard(recordCtx, t, cw, ch);
             }
           }
+          
+          // 폭발 효과(💥) 그리기 (300ms 유지)
           for (let i = hitEffects.length - 1; i >= 0; i--) {
-            let effect = hitEffects[i]; if (Date.now() - effect.time > 300) { hitEffects.splice(i, 1); } else { canvasCtx.font = "180px sans-serif"; canvasCtx.textAlign = "center"; canvasCtx.textBaseline = "middle"; canvasCtx.fillText("💥", effect.x * cw, effect.y * ch); }
+            let effect = hitEffects[i]; 
+            if (Date.now() - effect.time > 300) { 
+              hitEffects.splice(i, 1); 
+            } else { 
+              const drawBoom = (ctx) => { ctx.font = "150px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("💥", effect.x * cw, effect.y * ch); };
+              drawBoom(canvasCtx); drawBoom(recordCtx);
+            }
           }
         }
       }
-      canvasCtx.restore(); drawUI(); 
+
+      drawUI(canvasCtx, cw, ch);
+      drawUI(recordCtx, cw, ch);
+
+      if (gameState === 'playing') {
+        let elapsed = (Date.now() - startTime) / 1000;
+        let timeLeft = Math.max(0, 30 - elapsed);
+        timeLeftStr = timeLeft.toFixed(2);
+        
+        if (timeLeft <= 0) {
+          gameState = 'finished'; stopRecording();
+          stopBtn.style.display = 'none';
+          document.getElementById('bgm').pause();
+          playSound('sfx-cheer');
+          document.getElementById('final-record').innerText = `최종 점수: ${hitCount}점`;
+          resultModal.style.display = 'flex';
+          uiHeader.style.opacity = '1';
+          uiHome.style.opacity = '1';
+        }
+      }
     }
 
-    function drawUI() {
-      const cw = canvasElement.width; const ch = canvasElement.height;
-      function setTextStyle(fontSize, color, align, base) { canvasCtx.font = `${fontSize} 'Jua', sans-serif`; canvasCtx.fillStyle = color; canvasCtx.textAlign = align; canvasCtx.textBaseline = base; canvasCtx.strokeStyle = "rgba(0,0,0,0.8)"; canvasCtx.lineWidth = 8; }
-      if (gameState === 'countdown') { setTextStyle("200px", "#ffeb3b", "center", "middle"); canvasCtx.strokeText(countdownDisplay, cw / 2, ch / 2); canvasCtx.fillText(countdownDisplay, cw / 2, ch / 2); } 
-      else if (gameState === 'playing' || gameState === 'finished') {
-        if (gameState === 'playing') { 
-          let elapsed = (Date.now() - startTime) / 1000; let timeLeft = Math.max(0, 30 - elapsed); timeLeftStr = timeLeft.toFixed(2);
-          if (timeLeft <= 0) {
-            gameState = 'finished'; stopRecording(); stopBtn.style.display = 'none';
-            document.getElementById('bgm').pause(); playSound('sfx-cheer'); 
-            document.getElementById('final-record').innerText = `최종 점수: ${hitCount}점`; resultModal.style.display = 'flex';
-          }
-        }
+    function drawUI(ctx, cw, ch) {
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.shadowBlur = 10; ctx.shadowColor = "rgba(0,0,0,0.5)";
+
+      if (gameState === 'countdown') {
+        ctx.font = "bold 120px 'Jua', sans-serif";
+        ctx.fillStyle = "#ffeb3b";
+        ctx.fillText(countdownDisplay, cw/2, ch/2);
+      } else if (gameState === 'playing' || gameState === 'finished') {
         let timeColor = parseFloat(timeLeftStr) <= 5.00 ? "#ff1744" : "#ffeb3b";
-        setTextStyle("70px", timeColor, "right", "top"); canvasCtx.strokeText(`⏳ ${timeLeftStr}초`, cw - 30, 30); canvasCtx.fillText(`⏳ ${timeLeftStr}초`, cw - 30, 30);
-        setTextStyle("80px", "#ffeb3b", "left", "top"); canvasCtx.strokeText(`🥋 격파: ${hitCount}점`, 30, 30); canvasCtx.fillText(`🥋 격파: ${hitCount}점`, 30, 30);
+        
+        ctx.font = "bold 80px 'Jua', sans-serif";
+        ctx.textAlign = "left"; ctx.fillStyle = "#ffeb3b";
+        ctx.fillText(`🥋 격파: ${hitCount}점`, 40, 60);
+        ctx.textAlign = "right"; ctx.fillStyle = timeColor;
+        ctx.fillText(`⏳ ${timeLeftStr}초`, cw - 40, 60);
       }
     }
 
-    // 🌟 오디오 병합 녹화
-    function startRecording() { 
-      recordedChunks = []; initAudioRecording(); 
-      const canvasStream = canvasElement.captureStream(30); 
-      const combinedStream = new MediaStream([ ...canvasStream.getVideoTracks(), ...audioDest.stream.getAudioTracks() ]);
-      let options = { mimeType: 'video/webm' }; if (MediaRecorder.isTypeSupported('video/mp4')) { options = { mimeType: 'video/mp4' }; } 
-      mediaRecorder = new MediaRecorder(combinedStream, options); mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); }; mediaRecorder.start(); 
+    function startRecording() {
+      recordedChunks = [];
+      const stream = new MediaStream([...recordCanvas.captureStream(30).getTracks(), ...audioDest.stream.getTracks()]);
+      let options = { mimeType: 'video/webm' };
+      if (MediaRecorder.isTypeSupported('video/mp4')) { options = { mimeType: 'video/mp4' }; }
+      mediaRecorder = new MediaRecorder(stream, options);
+      mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
+      mediaRecorder.start();
     }
     
     function stopRecording() { if(mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop(); }
-    document.getElementById('save-vid-btn').addEventListener('click', () => { const actualMimeType = mediaRecorder.mimeType || 'video/webm'; const ext = actualMimeType.includes('mp4') ? 'mp4' : 'webm'; const blob = new Blob(recordedChunks, { type: actualMimeType }); const url = URL.createObjectURL(blob); const name = document.getElementById('player-name').value || "선수"; const a = document.createElement('a'); a.href = url; a.download = `스마트올림픽_${name}_태권도.${ext}`; a.click(); });
-    document.getElementById('save-img-btn').addEventListener('click', () => { const name = document.getElementById('player-name').value || "선수"; const cw = canvasElement.width; const ch = canvasElement.height; canvasCtx.font = "80px 'Jua', sans-serif"; canvasCtx.textAlign = "center"; canvasCtx.fillStyle = "yellow"; canvasCtx.strokeStyle = "black"; canvasCtx.lineWidth = 6; canvasCtx.strokeText(`🏆 ${name}의 격파 기록: ${hitCount}점`, cw / 2, ch - 50); canvasCtx.fillText(`🏆 ${name}의 격파 기록: ${hitCount}점`, cw / 2, ch - 50); const imgData = canvasElement.toDataURL("image/png"); const a = document.createElement('a'); a.href = imgData; a.download = `스마트올림픽_${name}_기록증.png`; a.click(); });
-    
-    const pose = new Pose({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`}); pose.setOptions({ selfieMode: true, modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 }); pose.onResults(onResults);
-    const camera = new Camera(videoElement, { onFrame: async () => { await pose.send({image: videoElement}); }, width: 1280, height: 720 }); 
-    camera.start().then(() => { startBtn.disabled = false; startBtn.innerText = "격파 시작!"; }).catch(e => { startBtn.innerText = "카메라 오류"; });
+
+    document.getElementById('save-vid-btn').onclick = () => {
+      const actualMimeType = mediaRecorder.mimeType || 'video/webm'; const ext = actualMimeType.includes('mp4') ? 'mp4' : 'webm';
+      const blob = new Blob(recordedChunks, { type: actualMimeType });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = `스마트올림픽_태권도_${document.getElementById('player-name').value || '선수'}_${hitCount}점.${ext}`; a.click();
+    };
+
+    document.getElementById('save-img-btn').onclick = () => {
+      const name = document.getElementById('player-name').value || "선수"; const cw = 1280; const ch = 720;
+      recordCtx.font = "80px 'Jua', sans-serif"; recordCtx.textAlign = "center"; recordCtx.fillStyle = "white"; recordCtx.strokeStyle = "black"; recordCtx.lineWidth = 6;
+      recordCtx.strokeText(`🏆 ${name}의 격파 기록: ${hitCount}점`, cw / 2, ch - 50); recordCtx.fillText(`🏆 ${name}의 격파 기록: ${hitCount}점`, cw / 2, ch - 50);
+      const a = document.createElement('a'); a.href = recordCanvas.toDataURL();
+      a.download = `스마트올림픽_태권도_${name}_기록증.png`; a.click();
+    };
+
+    const pose = new Pose({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`});
+    pose.setOptions({ selfieMode: true, modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+    pose.onResults(onResults);
+    new Camera(videoElement, { onFrame: async () => { await pose.send({image: videoElement}); }, width: 1280, height: 720 }).start();
   </script>
 </body>
 </html>

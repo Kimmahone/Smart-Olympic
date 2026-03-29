@@ -2,218 +2,369 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>스마트 올림픽: 서핑 밸런스</title>
-  <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+  
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+  
+  <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+  
   <style>
-    body { font-family: 'Jua', sans-serif; text-align: center; background-color: #E1F5FE; margin: 0; padding: 20px 10px; display: flex; flex-direction: column; align-items: center;}
-    h1 { color: #0288D1; margin: 0 0 10px 0; font-size: 2.5em; letter-spacing: 1px;}
-    .header-area { width: 100%; max-width: 1000px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-    .back-btn { padding: 10px 20px; background-color: #0288D1; color: white; text-decoration: none; border-radius: 8px; font-size: 1.2em; transition: 0.2s; white-space: nowrap;}
-    .back-btn:hover { background-color: #01579B; }
-    #container { position: relative; width: 100%; max-width: 1000px; aspect-ratio: 16 / 9; margin: 0 auto; }
-    canvas { width: 100%; height: 100%; background-color: #81D4FA; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.3); border: 5px solid #0288D1; object-fit: cover; box-sizing: border-box; }
-    #overlay, #result-modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(255,255,255,0.95); border-radius: 12px; z-index: 10; border: 5px solid #0288D1; box-sizing: border-box; }
-    #result-modal { display: none; }
-    button { padding: 15px 30px; font-family: 'Jua', sans-serif; font-size: 1.8em; color: white; background-color: #03A9F4; border: none; border-radius: 10px; cursor: pointer; transition: 0.2s; margin: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
-    button:hover { background-color: #0288D1; transform: scale(1.05); }
-    button:disabled { background-color: #B3E5FC; cursor: not-allowed; box-shadow: none; }
-    #stop-btn { position: absolute; bottom: 20px; right: 20px; display: none; padding: 10px 20px; font-size: 1.5em; background-color: #d32f2f; color: white; z-index: 11; }
-    #stop-btn:hover { background-color: #b71c1c; }
-    input[type="text"] { padding: 15px; font-family: 'Jua', sans-serif; font-size: 1.5em; border-radius: 5px; border: 2px solid #ccc; margin-bottom: 20px; text-align: center; width: 60%; max-width: 300px;}
-    .action-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
-    .small-btn { font-size: 1.3em; padding: 10px 20px; background-color: #0288D1; }
-    .small-btn:hover { background-color: #01579B; }
+    body { font-family: 'Jua', sans-serif; margin: 0; overflow: hidden; background-color: #E1F5FE; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; color: white; }
+    
+    .header-area { position: absolute; top: 20px; width: 100%; text-align: center; z-index: 10; transition: opacity 0.3s; }
+    h1 { margin: 0; font-size: 2.5em; color: #0288D1; text-shadow: 2px 2px 4px rgba(255,255,255,0.8); }
+    
+    .top-home-btn { position: absolute; top: 20px; left: 20px; background: rgba(2, 136, 209, 0.8); color: white; text-decoration: none; padding: 10px 20px; border-radius: 50px; font-size: 1.2em; z-index: 15; transition: opacity 0.3s, background 0.3s; }
+    .top-home-btn:hover { background: rgba(1, 87, 155, 1); }
+
+    .canvas-container { position: relative; width: 100%; max-width: 1280px; aspect-ratio: 16/9; background: #000; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border-radius: 15px; overflow: hidden; border: 5px solid #0288D1; }
+    canvas { width: 100%; height: 100%; object-fit: cover; display: block; } 
+    video { display: none; }
+    
+    .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(2, 136, 209, 0.7); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 20; }
+    .overlay h2 { font-size: 3.5em; margin-bottom: 30px; text-align: center; line-height: 1.3; color: white; text-shadow: 2px 2px 5px rgba(0,0,0,0.5); }
+    
+    button { font-family: 'Jua', sans-serif; font-size: 1.8em; padding: 15px 40px; border: none; border-radius: 50px; cursor: pointer; transition: transform 0.2s; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+    #start-btn { background: #ffeb3b; color: #333; }
+    button:hover { transform: scale(1.05); }
+    
+    #stop-btn { position: absolute; bottom: 20px; right: 20px; background: #DF0024; color: white; font-size: 1.2em; padding: 10px 20px; display: none; z-index: 10; border-radius: 50px;}
+    
+    .modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 30; }
+    .modal-content { background: white; color: #333; padding: 40px; border-radius: 30px; text-align: center; width: 80%; max-width: 500px; }
+    .modal-content h2 { color: #d32f2f; font-size: 3em; margin-top: 0; }
+    .record-text { font-size: 2.5em; margin: 20px 0; color: #ff9800; }
+    input[type="text"] { font-family: 'Jua', sans-serif; font-size: 1.5em; padding: 10px; width: 90%; text-align: center; border: 2px solid #ccc; border-radius: 15px; margin-bottom: 20px; }
+    
+    .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+    .btn-group button { font-size: 1.1em; padding: 12px; border-radius: 15px; }
+    .save-vid { background: #009F3D; color: white; }
+    .save-img { background: #0288D1; color: white; }
+    
+    .replay-btn { background: #03A9F4; color: white; width: 100%; margin-bottom: 10px; }
+    .exit-btn { background: #757575; color: white; width: 100%; font-size: 1.5em; text-decoration: none; display: block; padding: 15px 0; border-radius: 50px; }
   </style>
 </head>
 <body>
-  <audio id="bgm" src="media/surfing_bgm.mp3" loop crossorigin="anonymous"></audio>
-  <audio id="sfx-count" src="media/countdown.mp3" crossorigin="anonymous"></audio>
-  <audio id="sfx-start" src="media/start.mp3" crossorigin="anonymous"></audio>
-  <audio id="sfx-coin" src="media/coin.mp3" crossorigin="anonymous"></audio>
-  <audio id="sfx-damage" src="media/damage.mp3" crossorigin="anonymous"></audio>
-  <audio id="sfx-gameover" src="media/gameover.mp3" crossorigin="anonymous"></audio>
 
-  <div class="header-area">
-    <a href="index.html" class="back-btn">⬅️ 메인으로</a>
+  <audio id="bgm" src="media/surfing_bgm.mp3" loop></audio>
+  <audio id="sfx-count" src="media/countdown.mp3"></audio>
+  <audio id="sfx-start" src="media/start.mp3"></audio>
+  <audio id="sfx-coin" src="media/coin.mp3"></audio>
+  <audio id="sfx-damage" src="media/damage.mp3"></audio>
+  <audio id="sfx-gameover" src="media/gameover.mp3"></audio>
+
+  <div id="ui-header" class="header-area">
     <h1>🏄‍♂️ 스마트 올림픽: 서핑 밸런스</h1>
-    <div style="width: 110px;"></div>
   </div>
-  
-  <div id="container">
-    <video id="input_video" style="display:none;"></video>
-    <canvas id="output_canvas" width="1280" height="720"></canvas>
-    <div id="overlay">
-      <h2 style="color: #0288D1; margin-bottom: 20px; font-size: 3vw;">몸을 좌우로 기울여 상어를 피하고 동전을 드세요!</h2>
-      <button id="start-btn" disabled>카메라 연결 중...</button>
+  <a id="ui-home" href="index.html" class="top-home-btn">🏠 메인으로</a>
+
+  <div class="canvas-container">
+    <video id="input_video"></video>
+    <canvas id="output_canvas"></canvas>
+    
+    <div id="overlay" class="overlay">
+      <h2>몸을 좌우로 기울여<br>상어를 피하고 동전을 드세요!</h2>
+      <button id="start-btn">도전 시작!</button>
     </div>
-    <div id="result-modal">
-      <h1 style="color: #d32f2f; font-size: 5vw; margin: 0;">게임 오버! 🌊</h1>
-      <h2 id="final-record" style="font-size: 4vw; color: #ff9800; margin: 10px 0;">최종 점수: 0점</h2>
-      <input type="text" id="player-name" placeholder="학생 이름을 입력하세요">
-      <div class="action-btns">
-        <button id="save-img-btn" class="small-btn">📸 기록증 저장</button>
-        <button id="save-vid-btn" class="small-btn">🎥 영상 저장</button>
-        <button onclick="resetGame()" class="small-btn" style="background-color: #03A9F4; color:white;">🔄 다시 하기</button>
+    
+    <button id="stop-btn">중단하기</button>
+
+    <div id="result-modal" class="modal">
+      <div class="modal-content">
+        <h2>게임 오버! 🌊</h2>
+        <div id="final-record" class="record-text">최종 점수: 0점</div>
+        <input type="text" id="player-name" placeholder="선수 이름을 적어주세요">
+        <div class="btn-group">
+          <button id="save-vid-btn" class="save-vid">🎥 영상 저장</button>
+          <button id="save-img-btn" class="save-img">📸 사진 저장</button>
+        </div>
+        <button id="replay-btn" class="replay-btn">🔄 다시 도전하기</button>
+        <a href="index.html" class="exit-btn">🏠 메인 화면으로</a>
       </div>
     </div>
-    <button id="stop-btn">🚫 도전 중단</button>
   </div>
 
   <script>
     const videoElement = document.getElementById('input_video');
     const canvasElement = document.getElementById('output_canvas');
+    canvasElement.width = 1280; canvasElement.height = 720;
     const canvasCtx = canvasElement.getContext('2d');
+    
+    const uiHeader = document.getElementById('ui-header');
+    const uiHome = document.getElementById('ui-home');
     const startBtn = document.getElementById('start-btn');
     const stopBtn = document.getElementById('stop-btn');
+    const replayBtn = document.getElementById('replay-btn');
     const overlay = document.getElementById('overlay');
     const resultModal = document.getElementById('result-modal');
+
+    const recordCanvas = document.createElement('canvas');
+    recordCanvas.width = 1280; recordCanvas.height = 720;
+    const recordCtx = recordCanvas.getContext('2d');
+
+    function playSound(id) { 
+      const s = document.getElementById(id); 
+      if(s){ s.currentTime = 0; s.play().catch(e => console.warn(e)); } 
+    }
+
+    const COUNTDOWN_SPEED = 500; 
+    let gameState = 'waiting'; let startTime = 0; 
+    let countdownTick = 3; let countdownDisplay = ""; let countdownInterval = null;
     
-    function playSound(id) { const s = document.getElementById(id); if(s){ s.currentTime = 0; s.play().catch(e=>console.log(e)); } }
+    // 🌟 오리지널 게임 변수 복구
+    let score = 0; 
+    let lives = 3; 
+    let playerX = 0.5; 
+    let obstacles = []; 
+    let coins = []; 
+    let speedMultiplier = 1.0; 
+    let lastSpawnTime = 0;
 
-    let gameState = 'waiting'; let score = 0; let lives = 3; let startTime = 0; 
-    let countdownTick = 3; let countdownDisplay = "3"; let countdownInterval = null;
     let mediaRecorder; let recordedChunks = [];
-    let playerX = 0.5; let obstacles = []; let coins = []; let speedMultiplier = 1.0; let lastSpawnTime = 0;
+    let audioCtx; let audioDest; let globalMicStream = null;
 
-    // 🌟 오디오 라우팅
-    let audioCtx; let audioDest;
-    function initAudioRecording() {
+    async function initAudio() {
       if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         audioDest = audioCtx.createMediaStreamDestination();
-        document.querySelectorAll('audio').forEach(audioEl => {
-          if (!audioEl.dataset.connected) {
-            const source = audioCtx.createMediaElementSource(audioEl);
-            source.connect(audioDest); source.connect(audioCtx.destination); 
-            audioEl.dataset.connected = "true";
+        try {
+          globalMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const micSource = audioCtx.createMediaStreamSource(globalMicStream);
+          const micGain = audioCtx.createGain(); micGain.gain.value = 3.0; // 목소리 증폭
+          micSource.connect(micGain); micGain.connect(audioDest);
+        } catch (e) {}
+        const gameGain = audioCtx.createGain(); gameGain.gain.value = 0.4; // 게임 볼륨 조절
+        gameGain.connect(audioDest); gameGain.connect(audioCtx.destination);
+        document.querySelectorAll('audio').forEach(el => {
+          if (!el.dataset.routed) {
+            const source = audioCtx.createMediaElementSource(el);
+            source.connect(gameGain); el.dataset.routed = "true";
           }
         });
       }
-      if(audioCtx.state === 'suspended') audioCtx.resume();
+      await audioCtx.resume();
     }
 
-    startBtn.addEventListener('click', () => {
-      startRecording(); gameState = 'countdown'; countdownTick = 3; countdownDisplay = "3";
-      overlay.style.display = 'none'; stopBtn.style.display = 'block';
+    // 🌟 깔끔한 중단하기 (새로고침)
+    stopBtn.addEventListener('click', () => { location.reload(); });
+
+    replayBtn.addEventListener('click', () => {
+      resultModal.style.display = 'none';
+      overlay.style.display = 'flex';
+      startBtn.disabled = false;
+      startBtn.innerText = "도전 시작!";
+      gameState = 'waiting';
+    });
+
+    startBtn.addEventListener('click', async () => {
+      startBtn.disabled = true;
+      await initAudio();
+      startGameCycle();
+    });
+
+    function startGameCycle() {
+      overlay.style.display = 'none'; 
+      uiHeader.style.opacity = '0';
+      uiHome.style.opacity = '0';
+      stopBtn.style.display = 'block';
+
+      // 변수 초기화
+      score = 0; lives = 3; playerX = 0.5; obstacles = []; coins = []; speedMultiplier = 1.0;
+      gameState = 'countdown'; countdownTick = 3; countdownDisplay = "3";
       
-      const bgm = document.getElementById('bgm'); bgm.volume = 0.2; bgm.play();
-      playSound('sfx-count');
+      playSound('sfx-count'); 
 
       countdownInterval = setInterval(() => {
         countdownTick--;
-        if (countdownTick > 0) { countdownDisplay = countdownTick.toString(); } 
-        else if (countdownTick === 0) { countdownDisplay = "Go!"; playSound('sfx-start'); } 
-        else { clearInterval(countdownInterval); gameState = 'playing'; startTime = Date.now(); lastSpawnTime = Date.now(); bgm.volume = 0.6; }
-      }, 500); // 🌟 500ms
-    });
+        if (countdownTick > 0) {
+          countdownDisplay = countdownTick.toString();
+        } else if (countdownTick === 0) {
+          countdownDisplay = "GO!";
+          playSound('sfx-start');
+        } else {
+          clearInterval(countdownInterval);
+          gameState = 'playing';
+          startTime = Date.now();
+          lastSpawnTime = Date.now(); // 🌟 스폰 타이머 초기화
+          
+          const bgm = document.getElementById('bgm');
+          if(bgm) { bgm.currentTime = 0; bgm.play(); }
 
-    stopBtn.addEventListener('click', () => { resetGame(); });
-
-    function resetGame() {
-      if (gameState === 'countdown') clearInterval(countdownInterval);
-      if (gameState === 'playing' || gameState === 'countdown') stopRecording();
-      document.getElementById('bgm').pause(); document.getElementById('bgm').currentTime = 0;
-      gameState = 'waiting'; score = 0; lives = 3; playerX = 0.5; obstacles = []; coins = []; speedMultiplier = 1.0;
-      overlay.style.display = 'flex'; resultModal.style.display = 'none'; stopBtn.style.display = 'none';
+          startRecording();
+        }
+      }, COUNTDOWN_SPEED);
     }
 
     function onResults(results) {
-      canvasCtx.save(); canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height); canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
-      canvasCtx.fillStyle = "rgba(129, 212, 250, 0.35)"; canvasCtx.fillRect(0, 0, canvasElement.width, canvasElement.height);
+      if (!results.image) return;
+      const cw = 1280; const ch = 720;
+      
+      canvasCtx.drawImage(results.image, 0, 0, cw, ch);
+      recordCtx.drawImage(results.image, 0, 0, cw, ch);
 
-      const cw = canvasElement.width; const ch = canvasElement.height;
+      // 서핑 바다 느낌의 반투명 오버레이
+      canvasCtx.fillStyle = "rgba(129, 212, 250, 0.35)"; canvasCtx.fillRect(0, 0, cw, ch);
+      recordCtx.fillStyle = "rgba(129, 212, 250, 0.35)"; recordCtx.fillRect(0, 0, cw, ch);
 
       if (results.poseLandmarks && gameState === 'playing') {
         const lm = results.poseLandmarks;
+        
+        // 🌟 어깨 중심을 기준으로 플레이어 위치 계산 (오리지널 로직)
         const shoulderMidX = (lm[11].x + lm[12].x) / 2;
         let targetX = (shoulderMidX - 0.5) * 1.5 + 0.5; 
-        if (targetX < 0.1) targetX = 0.1; if (targetX > 0.9) targetX = 0.9;
-        playerX += (targetX - playerX) * 0.2;
+        if (targetX < 0.1) targetX = 0.1; 
+        if (targetX > 0.9) targetX = 0.9;
+        playerX += (targetX - playerX) * 0.2; // 부드러운 움직임
 
-        const now = Date.now(); const elapsedTime = (now - startTime) / 1000;
-        score += 0.3; speedMultiplier = 1.0 + (elapsedTime / 30); 
+        const now = Date.now(); 
+        const elapsedTime = (now - startTime) / 1000;
+        
+        score += 0.3; // 생존 점수
+        speedMultiplier = 1.0 + (elapsedTime / 30); // 시간 지날수록 속도 증가
 
+        // 아이템 & 상어 스폰
         if (now - lastSpawnTime > 800 / speedMultiplier) {
             const isCoin = Math.random() > 0.6; 
-            if(isCoin) { coins.push({ x: Math.random() * 0.8 + 0.1, y: -0.1, radius: 0.05 }); } 
-            else { obstacles.push({ x: Math.random() * 0.8 + 0.1, y: -0.1, radius: 0.06 }); }
+            if(isCoin) { 
+              coins.push({ x: Math.random() * 0.8 + 0.1, y: -0.1, radius: 0.05 }); 
+            } else { 
+              obstacles.push({ x: Math.random() * 0.8 + 0.1, y: -0.1, radius: 0.06 }); 
+            }
             lastSpawnTime = now;
         }
 
         const playerY = 0.8; const hitBoxRadius = 0.08; 
 
+        // 상어(장애물) 충돌 처리
         for (let i = obstacles.length - 1; i >= 0; i--) {
-            let obs = obstacles[i]; obs.y += 0.015 * speedMultiplier; 
+            let obs = obstacles[i]; 
+            obs.y += 0.015 * speedMultiplier; 
+            
             if (Math.hypot(playerX - obs.x, playerY - obs.y) < hitBoxRadius + obs.radius) {
-                lives -= 1; obstacles.splice(i, 1); playSound('sfx-damage'); 
+                lives -= 1; 
+                obstacles.splice(i, 1); 
+                playSound('sfx-damage'); 
+                
+                // 데미지 시 화면 빨갛게 깜빡임
                 canvasCtx.fillStyle = "rgba(255, 0, 0, 0.4)"; canvasCtx.fillRect(0, 0, cw, ch);
+                recordCtx.fillStyle = "rgba(255, 0, 0, 0.4)"; recordCtx.fillRect(0, 0, cw, ch);
+                
                 if(lives <= 0) {
                     gameState = 'finished'; stopRecording(); stopBtn.style.display = 'none';
                     document.getElementById('bgm').pause(); playSound('sfx-gameover'); 
-                    document.getElementById('final-record').innerText = `최종 점수: ${Math.floor(score)}점`; resultModal.style.display = 'flex';
+                    document.getElementById('final-record').innerText = `최종 점수: ${Math.floor(score)}점`; 
+                    resultModal.style.display = 'flex';
+                    uiHeader.style.opacity = '1'; uiHome.style.opacity = '1';
                 }
                 continue;
             }
             if (obs.y > 1.1) obstacles.splice(i, 1);
         }
 
+        // 동전 획득 처리
         for (let i = coins.length - 1; i >= 0; i--) {
-            let coin = coins[i]; coin.y += 0.015 * speedMultiplier;
+            let coin = coins[i]; 
+            coin.y += 0.015 * speedMultiplier;
+            
             if (Math.hypot(playerX - coin.x, playerY - coin.y) < hitBoxRadius + coin.radius) {
-                score += 100; coins.splice(i, 1); playSound('sfx-coin'); continue;
+                score += 100; 
+                coins.splice(i, 1); 
+                playSound('sfx-coin'); 
+                continue;
             }
             if (coin.y > 1.1) coins.splice(i, 1);
         }
 
-        drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, {color: 'rgba(255,255,255,0.3)', lineWidth: 4});
+        // 뼈대 그리기
+        canvasCtx.save();
+        canvasCtx.globalAlpha = 0.5;
+        drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, {color: 'rgba(255,255,255,0.5)', lineWidth: 4});
+        canvasCtx.restore();
+
+        // 🌟 이모지 렌더링 (화면 & 녹화 캔버스 모두 적용)
+        const drawGameObjects = (ctx) => {
+          for (let obs of obstacles) { 
+            ctx.fillStyle = "rgba(255, 255, 255, 0.7)"; 
+            ctx.beginPath(); ctx.arc(obs.x * cw, obs.y * ch, 40, 0, 2*Math.PI); ctx.fill();
+            ctx.font = "80px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillText("🦈", obs.x * cw, obs.y * ch); 
+          }
+          for (let coin of coins) { 
+            ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+            ctx.beginPath(); ctx.arc(coin.x * cw, coin.y * ch, 40, 0, 2*Math.PI); ctx.fill();
+            ctx.font = "80px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillText("🪙", coin.x * cw, coin.y * ch); 
+          }
+          
+          ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+          ctx.beginPath(); ctx.arc(playerX * cw, playerY * ch, 90, 0, 2*Math.PI); ctx.fill();
+          ctx.font = "180px sans-serif"; 
+          ctx.fillText("🏄‍♂️", playerX * cw, playerY * ch);
+        };
         
-        canvasCtx.globalAlpha = 1.0; 
-        
-        // 🌟 4. 기기 이모지 흐림 방지를 위한 하얀색 원형 스티커 배경 🌟
-        for (let obs of obstacles) { 
-          canvasCtx.fillStyle = "rgba(255, 255, 255, 0.7)"; // 반투명 흰색 원
-          canvasCtx.beginPath(); canvasCtx.arc(obs.x * cw, obs.y * ch, 40, 0, 2*Math.PI); canvasCtx.fill();
-          canvasCtx.font = "80px sans-serif"; canvasCtx.textAlign = "center"; canvasCtx.textBaseline = "middle";
-          canvasCtx.fillText("🦈", obs.x * cw, obs.y * ch); 
-        }
-        for (let coin of coins) { 
-          canvasCtx.fillStyle = "rgba(255, 255, 255, 0.7)";
-          canvasCtx.beginPath(); canvasCtx.arc(coin.x * cw, coin.y * ch, 40, 0, 2*Math.PI); canvasCtx.fill();
-          canvasCtx.font = "80px sans-serif"; canvasCtx.textAlign = "center"; canvasCtx.textBaseline = "middle";
-          canvasCtx.fillText("🪙", coin.x * cw, coin.y * ch); 
-        }
-        
-        // 서퍼는 180px로 대폭 키우고 더 큰 스티커 배경 
-        canvasCtx.fillStyle = "rgba(255, 255, 255, 0.6)";
-        canvasCtx.beginPath(); canvasCtx.arc(playerX * cw, playerY * ch, 90, 0, 2*Math.PI); canvasCtx.fill();
-        canvasCtx.font = "180px sans-serif"; 
-        canvasCtx.fillText("🏄‍♂️", playerX * cw, playerY * ch);
+        drawGameObjects(canvasCtx);
+        drawGameObjects(recordCtx);
       }
-      canvasCtx.restore(); drawUI(); 
+      
+      drawUI(canvasCtx, cw, ch);
+      drawUI(recordCtx, cw, ch);
     }
 
-    function drawUI() {
-      const cw = canvasElement.width; const ch = canvasElement.height;
-      function setTextStyle(fontSize, color, align, base) { canvasCtx.font = `${fontSize} 'Jua', sans-serif`; canvasCtx.fillStyle = color; canvasCtx.textAlign = align; canvasCtx.textBaseline = base; canvasCtx.strokeStyle = "rgba(0,0,0,0.8)"; canvasCtx.lineWidth = 8; }
-      if (gameState === 'countdown') { setTextStyle("200px", "#ffeb3b", "center", "middle"); canvasCtx.strokeText(countdownDisplay, cw / 2, ch / 2); canvasCtx.fillText(countdownDisplay, cw / 2, ch / 2); } 
-      else if (gameState === 'playing' || gameState === 'finished') {
-        setTextStyle("60px", "#fff", "left", "top"); canvasCtx.strokeText(`🏆 점수: ${Math.floor(score)}`, 30, 30); canvasCtx.fillText(`🏆 점수: ${Math.floor(score)}`, 30, 30);
+    function drawUI(ctx, cw, ch) {
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.shadowBlur = 10; ctx.shadowColor = "rgba(0,0,0,0.8)";
+
+      if (gameState === 'countdown') {
+        ctx.font = "bold 150px 'Jua', sans-serif";
+        ctx.fillStyle = "#ffeb3b";
+        ctx.fillText(countdownDisplay, cw/2, ch/2);
+      } else if (gameState === 'playing' || gameState === 'finished') {
+        ctx.font = "bold 60px 'Jua', sans-serif";
+        ctx.textAlign = "left"; ctx.fillStyle = "#fff";
+        ctx.fillText(`🏆 점수: ${Math.floor(score)}`, 40, 50);
+        
         let hearts = "❤️".repeat(Math.max(0, lives)) + "🤍".repeat(Math.max(0, 3 - lives));
-        setTextStyle("60px", "#fff", "right", "top"); canvasCtx.strokeText(hearts, cw - 30, 30); canvasCtx.fillText(hearts, cw - 30, 30);
+        ctx.textAlign = "right"; ctx.fillStyle = "#fff";
+        ctx.fillText(hearts, cw - 40, 50);
       }
     }
 
-    function startRecording() { recordedChunks = []; initAudioRecording(); const canvasStream = canvasElement.captureStream(30); const combinedStream = new MediaStream([ ...canvasStream.getVideoTracks(), ...audioDest.stream.getAudioTracks() ]); let options = { mimeType: 'video/webm' }; if (MediaRecorder.isTypeSupported('video/mp4')) { options = { mimeType: 'video/mp4' }; } mediaRecorder = new MediaRecorder(combinedStream, options); mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); }; mediaRecorder.start(); }
-    function stopRecording() { if(mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop(); }
-    document.getElementById('save-vid-btn').addEventListener('click', () => { const actualMimeType = mediaRecorder.mimeType || 'video/webm'; const ext = actualMimeType.includes('mp4') ? 'mp4' : 'webm'; const blob = new Blob(recordedChunks, { type: actualMimeType }); const url = URL.createObjectURL(blob); const name = document.getElementById('player-name').value || "선수"; const a = document.createElement('a'); a.href = url; a.download = `스마트올림픽_${name}_서핑.${ext}`; a.click(); });
-    document.getElementById('save-img-btn').addEventListener('click', () => { const name = document.getElementById('player-name').value || "선수"; const cw = canvasElement.width; const ch = canvasElement.height; canvasCtx.font = "80px 'Jua', sans-serif"; canvasCtx.textAlign = "center"; canvasCtx.fillStyle = "#fff"; canvasCtx.strokeStyle = "black"; canvasCtx.lineWidth = 6; canvasCtx.strokeText(`🏆 ${name}의 서핑 점수: ${Math.floor(score)}점`, cw / 2, ch - 50); canvasCtx.fillText(`🏆 ${name}의 서핑 점수: ${Math.floor(score)}점`, cw / 2, ch - 50); const imgData = canvasElement.toDataURL("image/png"); const a = document.createElement('a'); a.href = imgData; a.download = `스마트올림픽_${name}_기록증.png`; a.click(); });
+    function startRecording() {
+      recordedChunks = [];
+      const stream = new MediaStream([...recordCanvas.captureStream(30).getTracks(), ...audioDest.stream.getTracks()]);
+      let options = { mimeType: 'video/webm' };
+      if (MediaRecorder.isTypeSupported('video/mp4')) { options = { mimeType: 'video/mp4' }; }
+      mediaRecorder = new MediaRecorder(stream, options);
+      mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
+      mediaRecorder.start();
+    }
     
-    const pose = new Pose({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`}); pose.setOptions({ selfieMode: true, modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 }); pose.onResults(onResults);
-    const camera = new Camera(videoElement, { onFrame: async () => { await pose.send({image: videoElement}); }, width: 1280, height: 720 }); 
-    camera.start().then(() => { startBtn.disabled = false; startBtn.innerText = "서핑 시작!"; }).catch(e => { startBtn.innerText = "카메라 오류"; });
+    function stopRecording() { if(mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop(); }
+
+    document.getElementById('save-vid-btn').onclick = () => {
+      const actualMimeType = mediaRecorder.mimeType || 'video/webm'; const ext = actualMimeType.includes('mp4') ? 'mp4' : 'webm';
+      const blob = new Blob(recordedChunks, { type: actualMimeType });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = `스마트올림픽_서핑_${document.getElementById('player-name').value || '선수'}_${Math.floor(score)}점.${ext}`; a.click();
+    };
+
+    document.getElementById('save-img-btn').onclick = () => {
+      const name = document.getElementById('player-name').value || "선수"; const cw = 1280; const ch = 720;
+      recordCtx.font = "80px 'Jua', sans-serif"; recordCtx.textAlign = "center"; recordCtx.fillStyle = "white"; recordCtx.strokeStyle = "black"; recordCtx.lineWidth = 6;
+      recordCtx.strokeText(`🏆 ${name}의 서핑 점수: ${Math.floor(score)}점`, cw / 2, ch - 50); recordCtx.fillText(`🏆 ${name}의 서핑 점수: ${Math.floor(score)}점`, cw / 2, ch - 50);
+      const a = document.createElement('a'); a.href = recordCanvas.toDataURL();
+      a.download = `스마트올림픽_서핑_${name}_기록증.png`; a.click();
+    };
+
+    const pose = new Pose({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`});
+    pose.setOptions({ selfieMode: true, modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+    pose.onResults(onResults);
+    new Camera(videoElement, { onFrame: async () => { await pose.send({image: videoElement}); }, width: 1280, height: 720 }).start();
   </script>
 </body>
 </html>

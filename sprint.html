@@ -2,190 +2,295 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>스마트 올림픽: 100m 달리기</title>
-  <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+  
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+  
+  <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+  
   <style>
-    body { font-family: 'Jua', sans-serif; text-align: center; background-color: #f0f8ff; margin: 0; padding: 20px 10px; display: flex; flex-direction: column; align-items: center;}
-    h1 { color: #0085C7; margin: 0 0 10px 0; font-size: 2.5em; letter-spacing: 1px;}
-    .header-area { width: 100%; max-width: 1000px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-    .back-btn { padding: 10px 20px; background-color: #0085C7; color: white; text-decoration: none; border-radius: 8px; font-size: 1.2em; transition: 0.2s; white-space: nowrap;}
-    .back-btn:hover { background-color: #005bbb; }
-    #container { position: relative; width: 100%; max-width: 1000px; aspect-ratio: 16 / 9; margin: 0 auto; }
-    canvas { width: 100%; height: 100%; background-color: #bbdefb; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.2); border: 5px solid #0085C7; object-fit: cover; box-sizing: border-box; }
-    #overlay, #result-modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(255,255,255,0.95); border-radius: 12px; z-index: 10; border: 5px solid #0085C7; box-sizing: border-box; }
-    #result-modal { display: none; }
-    button { padding: 15px 30px; font-family: 'Jua', sans-serif; font-size: 1.8em; color: white; background-color: #0085C7; border: none; border-radius: 10px; cursor: pointer; transition: 0.2s; margin: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
-    button:hover { background-color: #005bbb; transform: scale(1.05); }
-    button:disabled { background-color: #ccc; cursor: not-allowed; box-shadow: none; }
-    #stop-btn { position: absolute; bottom: 20px; right: 20px; display: none; padding: 10px 20px; font-size: 1.5em; background-color: #d32f2f; color: white; z-index: 11; }
-    #stop-btn:hover { background-color: #b71c1c; }
-    input[type="text"] { padding: 15px; font-family: 'Jua', sans-serif; font-size: 1.5em; border-radius: 5px; border: 2px solid #ccc; margin-bottom: 20px; text-align: center; width: 60%; max-width: 300px;}
-    .action-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
-    .small-btn { font-size: 1.3em; padding: 10px 20px; background-color: #0085C7; }
-    .small-btn:hover { background-color: #005bbb; }
+    body { font-family: 'Jua', sans-serif; margin: 0; overflow: hidden; background-color: #111; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; color: white; }
+    
+    .header-area { position: absolute; top: 20px; width: 100%; text-align: center; z-index: 10; transition: opacity 0.3s; }
+    h1 { margin: 0; font-size: 2.5em; color: #ffeb3b; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
+    
+    .top-home-btn { position: absolute; top: 20px; left: 20px; background: rgba(255,255,255,0.2); color: white; text-decoration: none; padding: 10px 20px; border-radius: 50px; font-size: 1.2em; z-index: 15; transition: opacity 0.3s, background 0.3s; }
+    .top-home-btn:hover { background: rgba(255,255,255,0.4); }
+
+    .canvas-container { position: relative; width: 100%; max-width: 1280px; aspect-ratio: 16/9; background: #000; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border-radius: 15px; overflow: hidden; }
+    canvas { width: 100%; height: 100%; object-fit: cover; display: block; } 
+    video { display: none; }
+    
+    .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 20; }
+    .overlay h2 { font-size: 3.5em; margin-bottom: 30px; text-align: center; line-height: 1.3; color: white; }
+    
+    button { font-family: 'Jua', sans-serif; font-size: 1.8em; padding: 15px 40px; border: none; border-radius: 50px; cursor: pointer; transition: transform 0.2s; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+    #start-btn { background: #ffeb3b; color: #333; }
+    button:hover { transform: scale(1.05); }
+    
+    #stop-btn { position: absolute; bottom: 20px; right: 20px; background: #DF0024; color: white; font-size: 1.2em; padding: 10px 20px; display: none; z-index: 10; }
+    
+    .modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 30; }
+    .modal-content { background: white; color: #333; padding: 40px; border-radius: 30px; text-align: center; width: 80%; max-width: 500px; }
+    .modal-content h2 { color: #DF0024; font-size: 3em; margin-top: 0; }
+    .record-text { font-size: 2.5em; margin: 20px 0; color: #0085C7; }
+    input[type="text"] { font-family: 'Jua', sans-serif; font-size: 1.5em; padding: 10px; width: 90%; text-align: center; border: 2px solid #ccc; border-radius: 15px; margin-bottom: 20px; }
+    
+    .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+    .btn-group button { font-size: 1.1em; padding: 12px; border-radius: 15px; }
+    .save-vid { background: #009F3D; color: white; }
+    .save-img { background: #0085C7; color: white; }
+    
+    .replay-btn { background: #ff9800; color: white; width: 100%; margin-bottom: 10px; }
+    .exit-btn { background: #757575; color: white; width: 100%; font-size: 1.5em; text-decoration: none; display: block; padding: 15px 0; border-radius: 50px; }
   </style>
 </head>
 <body>
-  <audio id="bgm" src="media/sprint_bgm.mp3" loop crossorigin="anonymous"></audio>
-  <audio id="sfx-count" src="media/countdown.mp3" crossorigin="anonymous"></audio>
-  <audio id="sfx-start" src="media/start.mp3" crossorigin="anonymous"></audio>
-  <audio id="sfx-cheer" src="media/cheer.mp3" crossorigin="anonymous"></audio>
 
-  <div class="header-area">
-    <a href="index.html" class="back-btn">⬅️ 메인으로</a>
-    <h1>🏃 스마트 올림픽: 100m 달리기</h1>
-    <div style="width: 110px;"></div>
+  <audio id="bgm" src="media/sprint_bgm.mp3" loop></audio>
+  <audio id="sfx-count" src="media/countdown.mp3"></audio>
+  <audio id="sfx-start" src="media/start.mp3"></audio>
+  <audio id="sfx-cheer" src="media/cheer.mp3"></audio>
+
+  <div id="ui-header" class="header-area">
+    <h1>🏃‍♂️ 스마트 올림픽: 100m 달리기</h1>
   </div>
-  
-  <div id="container">
-    <video id="input_video" style="display:none;"></video>
-    <canvas id="output_canvas" width="1280" height="720"></canvas>
-    <div id="overlay">
-      <h2 style="color: #0085C7; margin-bottom: 20px; font-size: 3vw;">전신이 나오게 선 뒤, 제자리에서 힘차게 뛰세요!</h2>
-      <button id="start-btn" disabled>카메라 연결 중...</button>
+  <a id="ui-home" href="index.html" class="top-home-btn">🏠 메인으로</a>
+
+  <div class="canvas-container">
+    <video id="input_video"></video>
+    <canvas id="output_canvas"></canvas>
+    
+    <div id="overlay" class="overlay">
+      <h2>제자리에서 무릎을 높게 들어<br>최대한 빨리 달려주세요!</h2>
+      <button id="start-btn">도전 시작!</button>
     </div>
-    <div id="result-modal">
-      <h1 style="color: #0085C7; font-size: 5vw; margin: 0;">결승선 통과! 🎉</h1>
-      <h2 id="final-record" style="font-size: 4vw; color: #ff5722; margin: 10px 0;">기록: 0.00초</h2>
-      <input type="text" id="player-name" placeholder="학생 이름을 입력하세요">
-      <div class="action-btns">
-        <button id="save-img-btn" class="small-btn">📸 기록증 저장</button>
-        <button id="save-vid-btn" class="small-btn">🎥 영상 저장</button>
-        <button onclick="resetGame()" class="small-btn" style="background-color: #ff5722;">🔄 다시 하기</button>
+    
+    <button id="stop-btn">중단하기</button>
+
+    <div id="result-modal" class="modal">
+      <div class="modal-content">
+        <h2>기록 달성!</h2>
+        <div id="final-record" class="record-text">0.00초</div>
+        <input type="text" id="player-name" placeholder="선수 이름을 적어주세요">
+        <div class="btn-group">
+          <button id="save-vid-btn" class="save-vid">🎥 영상 저장</button>
+          <button id="save-img-btn" class="save-img">📸 사진 저장</button>
+        </div>
+        <button id="replay-btn" class="replay-btn">🔄 다시 도전하기</button>
+        <a href="index.html" class="exit-btn">🏠 메인 화면으로</a>
       </div>
     </div>
-    <button id="stop-btn">🚫 도전 중단</button>
   </div>
 
   <script>
     const videoElement = document.getElementById('input_video');
     const canvasElement = document.getElementById('output_canvas');
+    canvasElement.width = 1280; canvasElement.height = 720;
     const canvasCtx = canvasElement.getContext('2d');
+    
+    const uiHeader = document.getElementById('ui-header');
+    const uiHome = document.getElementById('ui-home');
     const startBtn = document.getElementById('start-btn');
     const stopBtn = document.getElementById('stop-btn');
+    const replayBtn = document.getElementById('replay-btn');
     const overlay = document.getElementById('overlay');
     const resultModal = document.getElementById('result-modal');
-    
-    function playSound(id) { const s = document.getElementById(id); if(s){ s.currentTime = 0; s.play().catch(e=>console.log(e)); } }
 
-    let gameState = 'waiting'; let distance = 0; let isRightKneeUp = false; let isLeftKneeUp = false; let lastStepTime = 0; 
-    let startTime = 0; let currentTimeStr = "0.00";
-    let countdownTick = 3; let countdownDisplay = "3"; let countdownInterval = null;
+    const recordCanvas = document.createElement('canvas');
+    recordCanvas.width = 1280; recordCanvas.height = 720;
+    const recordCtx = recordCanvas.getContext('2d');
+
+    function playSound(id) { 
+      const s = document.getElementById(id); 
+      if(s){ 
+        s.currentTime = 0; 
+        s.play().catch(e => console.warn(id + " 재생 실패: ", e)); 
+      } 
+    }
+
+    const COUNTDOWN_SPEED = 500; 
+    let gameState = 'waiting'; let distance = 0; let currentTimeStr = "0.00"; let startTime = 0;
+    let countdownTick = 3; let countdownDisplay = ""; let countdownInterval = null;
+    let lastKneeY = 0;
     let mediaRecorder; let recordedChunks = [];
+    let audioCtx; let audioDest; let globalMicStream = null;
 
-    // 🌟 1. 오디오 라우팅(녹화용) 설정 
-    let audioCtx; let audioDest;
-    function initAudioRecording() {
+    async function initAudio() {
       if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         audioDest = audioCtx.createMediaStreamDestination();
-        document.querySelectorAll('audio').forEach(audioEl => {
-          if (!audioEl.dataset.connected) {
-            const source = audioCtx.createMediaElementSource(audioEl);
-            source.connect(audioDest);
-            source.connect(audioCtx.destination); // 스피커로도 소리 나게
-            audioEl.dataset.connected = "true";
+        try {
+          globalMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const micSource = audioCtx.createMediaStreamSource(globalMicStream);
+          const micGain = audioCtx.createGain(); micGain.gain.value = 3.0; // 목소리 증폭
+          micSource.connect(micGain); micGain.connect(audioDest);
+        } catch (e) {}
+        const gameGain = audioCtx.createGain(); gameGain.gain.value = 0.4; // 게임 볼륨 조절
+        gameGain.connect(audioDest); gameGain.connect(audioCtx.destination);
+        document.querySelectorAll('audio').forEach(el => {
+          if (!el.dataset.routed) {
+            const source = audioCtx.createMediaElementSource(el);
+            source.connect(gameGain); el.dataset.routed = "true";
           }
         });
       }
-      if(audioCtx.state === 'suspended') audioCtx.resume();
+      await audioCtx.resume();
     }
 
-    startBtn.addEventListener('click', () => {
-      startRecording(); gameState = 'countdown'; countdownTick = 3; countdownDisplay = "3";
-      overlay.style.display = 'none'; stopBtn.style.display = 'block'; 
-      
-      const bgm = document.getElementById('bgm');
-      bgm.volume = 0.2; bgm.play();
-      playSound('sfx-count'); 
-
-      // 🌟 2. 카운트다운 간격 600ms로 조절
-      countdownInterval = setInterval(() => {
-        countdownTick--; 
-        if (countdownTick > 0) { countdownDisplay = countdownTick.toString(); } 
-        else if (countdownTick === 0) { countdownDisplay = "Start!"; playSound('sfx-start'); } 
-        else { 
-          clearInterval(countdownInterval); gameState = 'playing'; startTime = Date.now(); lastStepTime = Date.now();
-          bgm.volume = 0.6;
-        }
-      }, 500);
+    replayBtn.addEventListener('click', () => {
+      resultModal.style.display = 'none';
+      overlay.style.display = 'flex';
+      startBtn.disabled = false;
+      startBtn.innerText = "도전 시작!";
+      gameState = 'waiting';
     });
 
-    stopBtn.addEventListener('click', () => { resetGame(); });
+    startBtn.addEventListener('click', async () => {
+      startBtn.disabled = true;
+      await initAudio();
+      startGameCycle();
+    });
 
-    function resetGame() {
-      if (gameState === 'countdown') clearInterval(countdownInterval);
-      if (gameState === 'playing' || gameState === 'countdown') stopRecording();
-      document.getElementById('bgm').pause(); document.getElementById('bgm').currentTime = 0;
-      gameState = 'waiting'; distance = 0; isRightKneeUp = false; isLeftKneeUp = false; currentTimeStr = "0.00";
-      overlay.style.display = 'flex'; resultModal.style.display = 'none'; stopBtn.style.display = 'none';
+    function startGameCycle() {
+      overlay.style.display = 'none'; 
+      uiHeader.style.opacity = '0';
+      uiHome.style.opacity = '0';
+      stopBtn.style.display = 'block';
+
+      distance = 0; currentTimeStr = "0.00";
+      gameState = 'countdown'; countdownTick = 3; countdownDisplay = "3";
+      
+      playSound('sfx-count'); // 🌟 시작할 때 한 번만 재생!
+
+      countdownInterval = setInterval(() => {
+        countdownTick--;
+        if (countdownTick > 0) {
+          countdownDisplay = countdownTick.toString();
+        } else if (countdownTick === 0) {
+          countdownDisplay = "START!";
+          playSound('sfx-start');
+        } else {
+          clearInterval(countdownInterval);
+          gameState = 'playing';
+          startTime = Date.now();
+          
+          // 🌟 게임 시작 시점에 BGM 재생!
+          const bgm = document.getElementById('bgm');
+          if(bgm) { bgm.currentTime = 0; bgm.play(); }
+
+          startRecording();
+        }
+      }, COUNTDOWN_SPEED);
     }
 
     function onResults(results) {
-      canvasCtx.save(); canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height); canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
-      if (results.poseLandmarks) {
-        drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, {color: '#FFFFFF', lineWidth: 6});
-        drawLandmarks(canvasCtx, results.poseLandmarks, {color: '#0085C7', lineWidth: 4, radius: 6});
+      if (!results.image) return;
+      const cw = 1280; const ch = 720;
+      
+      canvasCtx.drawImage(results.image, 0, 0, cw, ch);
+      recordCtx.drawImage(results.image, 0, 0, cw, ch);
 
+      if (results.poseLandmarks) {
+        canvasCtx.save();
+        canvasCtx.globalAlpha = 0.3;
+        drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, {color: '#FFFFFF', lineWidth: 4});
+        canvasCtx.globalAlpha = 0.6;
+        drawLandmarks(canvasCtx, results.poseLandmarks, {color: '#0085C7', lineWidth: 2, radius: 4});
+        canvasCtx.restore();
+
+        // 🌟 달리기 인식 로직 (무릎의 상하 움직임 감지)
         if (gameState === 'playing') {
           const lm = results.poseLandmarks;
-          const rightHipY = lm[24].y; const rightKneeY = lm[26].y; const leftHipY = lm[23].y; const leftKneeY = lm[25].y;
-          const threshold = 0.25; let stepTaken = false;
-
-          if (rightKneeY < rightHipY + threshold && !isLeftKneeUp) { if (!isRightKneeUp) { stepTaken = true; isRightKneeUp = true; } } else if (rightKneeY >= rightHipY + threshold) { isRightKneeUp = false; }
-          if (leftKneeY < leftHipY + threshold && !isRightKneeUp) { if (!isLeftKneeUp) { stepTaken = true; isLeftKneeUp = true; } } else if (leftKneeY >= leftHipY + threshold) { isLeftKneeUp = false; }
-
-          if (stepTaken) {
-            const now = Date.now(); const stepDuration = now - lastStepTime; 
-            if (stepDuration < 300) { distance += 3; } else if (stepDuration < 600) { distance += 2; } else { distance += 1; } 
-            lastStepTime = now;
-            if (distance >= 100) {
-              distance = 100; gameState = 'finished'; stopRecording(); stopBtn.style.display = 'none'; 
-              document.getElementById('bgm').pause(); playSound('sfx-cheer'); 
-              document.getElementById('final-record').innerText = `기록: ${currentTimeStr}초`; resultModal.style.display = 'flex';
-            }
+          const currentKneeY = (lm[25].y + lm[26].y) / 2;
+          
+          if (lastKneeY - currentKneeY > 0.04) { 
+            distance += 1.5; // 움직임 폭 감지 시 거리 증가
           }
+          lastKneeY = currentKneeY;
         }
       }
-      canvasCtx.restore(); drawUI(); 
-    }
 
-    function drawUI() {
-      const cw = canvasElement.width; const ch = canvasElement.height;
-      function setTextStyle(fontSize, color, align, base) { canvasCtx.font = `${fontSize} 'Jua', sans-serif`; canvasCtx.fillStyle = color; canvasCtx.textAlign = align; canvasCtx.textBaseline = base; canvasCtx.strokeStyle = "rgba(0,0,0,0.6)"; canvasCtx.lineWidth = 8; }
-      if (gameState === 'countdown') { setTextStyle("200px", "#ffeb3b", "center", "middle"); canvasCtx.strokeText(countdownDisplay, cw / 2, ch / 2); canvasCtx.fillText(countdownDisplay, cw / 2, ch / 2); } 
-      else if (gameState === 'playing' || gameState === 'finished') {
-        if (gameState === 'playing') { currentTimeStr = ((Date.now() - startTime) / 1000).toFixed(2); }
-        setTextStyle("70px", "#ffeb3b", "right", "top"); canvasCtx.strokeText(`⏳ ${currentTimeStr}초`, cw - 30, 30); canvasCtx.fillText(`⏳ ${currentTimeStr}초`, cw - 30, 30);
-        setTextStyle("80px", "#0085C7", "left", "top"); canvasCtx.strokeText(`🏃 ${distance}m / 100m`, 30, 30); canvasCtx.fillText(`🏃 ${distance}m / 100m`, 30, 30);
+      drawUI(canvasCtx, cw, ch);
+      drawUI(recordCtx, cw, ch);
+
+      if (gameState === 'playing') {
+        currentTimeStr = ((Date.now() - startTime) / 1000).toFixed(2);
+        
+        if (distance >= 100) {
+          distance = 100;
+          gameState = 'finished'; stopRecording();
+          stopBtn.style.display = 'none';
+          document.getElementById('bgm').pause();
+          playSound('sfx-cheer');
+          document.getElementById('final-record').innerText = `기록: ${currentTimeStr}초`;
+          resultModal.style.display = 'flex';
+          uiHeader.style.opacity = '1';
+          uiHome.style.opacity = '1';
+        }
       }
     }
 
-    // 🌟 3. 녹화 함수에 오디오 병합 추가
-    function startRecording() { 
-      recordedChunks = []; 
-      initAudioRecording(); // 오디오 라우팅 실행
-      
-      const canvasStream = canvasElement.captureStream(30); 
-      // 비디오 트랙과 오디오 트랙을 합칩니다!
-      const combinedStream = new MediaStream([ ...canvasStream.getVideoTracks(), ...audioDest.stream.getAudioTracks() ]);
-      
-      let options = { mimeType: 'video/webm' }; if (MediaRecorder.isTypeSupported('video/mp4')) { options = { mimeType: 'video/mp4' }; } 
-      mediaRecorder = new MediaRecorder(combinedStream, options); 
-      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); }; mediaRecorder.start(); 
+    function drawUI(ctx, cw, ch) {
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.shadowBlur = 10; ctx.shadowColor = "rgba(0,0,0,0.5)";
+
+      if (gameState === 'countdown') {
+        ctx.font = "bold 120px 'Jua', sans-serif";
+        ctx.fillStyle = "#ffeb3b";
+        ctx.fillText(countdownDisplay, cw/2, ch/2);
+      } else if (gameState === 'playing' || gameState === 'finished') {
+        ctx.font = "bold 80px 'Jua', sans-serif";
+        ctx.textAlign = "left"; ctx.fillStyle = "#0085C7";
+        ctx.fillText(`🏃 ${Math.floor(distance)}m / 100m`, 40, 60);
+        ctx.textAlign = "right"; ctx.fillStyle = "#ffeb3b";
+        ctx.fillText(`⏱️ ${currentTimeStr}초`, cw - 40, 60);
+        
+        // 🌟 하단에 100m 진행 상태 바(Progress Bar) 추가
+        if (gameState === 'playing') {
+          ctx.fillStyle = "rgba(255,255,255,0.3)";
+          ctx.fillRect(100, ch - 50, cw - 200, 20);
+          ctx.fillStyle = "#009F3D";
+          ctx.fillRect(100, ch - 50, (cw - 200) * (distance / 100), 20);
+        }
+      }
+    }
+
+    function startRecording() {
+      recordedChunks = [];
+      const stream = new MediaStream([...recordCanvas.captureStream(30).getTracks(), ...audioDest.stream.getTracks()]);
+      let options = { mimeType: 'video/webm' };
+      if (MediaRecorder.isTypeSupported('video/mp4')) { options = { mimeType: 'video/mp4' }; }
+      mediaRecorder = new MediaRecorder(stream, options);
+      mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
+      mediaRecorder.start();
     }
     
     function stopRecording() { if(mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop(); }
-    document.getElementById('save-vid-btn').addEventListener('click', () => { const actualMimeType = mediaRecorder.mimeType || 'video/webm'; const ext = actualMimeType.includes('mp4') ? 'mp4' : 'webm'; const blob = new Blob(recordedChunks, { type: actualMimeType }); const url = URL.createObjectURL(blob); const name = document.getElementById('player-name').value || "선수"; const a = document.createElement('a'); a.href = url; a.download = `스마트올림픽_${name}_${currentTimeStr}초.${ext}`; a.click(); });
-    document.getElementById('save-img-btn').addEventListener('click', () => { const name = document.getElementById('player-name').value || "선수"; const cw = canvasElement.width; const ch = canvasElement.height; canvasCtx.font = "80px 'Jua', sans-serif"; canvasCtx.textAlign = "center"; canvasCtx.fillStyle = "white"; canvasCtx.strokeStyle = "black"; canvasCtx.lineWidth = 6; canvasCtx.strokeText(`🏆 ${name}의 기록: ${currentTimeStr}초`, cw / 2, ch - 50); canvasCtx.fillText(`🏆 ${name}의 기록: ${currentTimeStr}초`, cw / 2, ch - 50); const imgData = canvasElement.toDataURL("image/png"); const a = document.createElement('a'); a.href = imgData; a.download = `스마트올림픽_${name}_기록증.png`; a.click(); });
+
+    document.getElementById('save-vid-btn').onclick = () => {
+      const actualMimeType = mediaRecorder.mimeType || 'video/webm'; const ext = actualMimeType.includes('mp4') ? 'mp4' : 'webm';
+      const blob = new Blob(recordedChunks, { type: actualMimeType });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = `스마트올림픽_달리기_${document.getElementById('player-name').value || '선수'}_${currentTimeStr}초.${ext}`; a.click();
+    };
+
+    document.getElementById('save-img-btn').onclick = () => {
+      const name = document.getElementById('player-name').value || "선수"; const cw = 1280; const ch = 720;
+      recordCtx.font = "80px 'Jua', sans-serif"; recordCtx.textAlign = "center"; recordCtx.fillStyle = "white"; recordCtx.strokeStyle = "black"; recordCtx.lineWidth = 6;
+      recordCtx.strokeText(`🏆 ${name}의 달리기 기록: ${currentTimeStr}초`, cw / 2, ch - 50); recordCtx.fillText(`🏆 ${name}의 달리기 기록: ${currentTimeStr}초`, cw / 2, ch - 50);
+      const a = document.createElement('a'); a.href = recordCanvas.toDataURL();
+      a.download = `스마트올림픽_달리기_${name}_기록증.png`; a.click();
+    };
 
     const pose = new Pose({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`});
-    pose.setOptions({ selfieMode: true, modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 }); pose.onResults(onResults);
-    const camera = new Camera(videoElement, { onFrame: async () => { await pose.send({image: videoElement}); }, width: 1280, height: 720 });
-    camera.start().then(() => { startBtn.disabled = false; startBtn.innerText = "도전 시작!"; }).catch(e => { startBtn.innerText = "카메라 오류"; });
+    pose.setOptions({ selfieMode: true, modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+    pose.onResults(onResults);
+    new Camera(videoElement, { onFrame: async () => { await pose.send({image: videoElement}); }, width: 1280, height: 720 }).start();
   </script>
 </body>
 </html>
