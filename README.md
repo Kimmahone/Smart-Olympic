@@ -42,7 +42,6 @@
 ---
 
 ## 📂 프로젝트 구조 (Directory Structure)
-```text
 📦 smart-olympic
  ┣ 📜 index.html        # 메인 대시보드 및 종목 선택 화면
  ┣ 📜 sprint.html       # 100m 달리기
@@ -57,9 +56,11 @@
 이 프로젝트를 로컬 환경에서 실행하고 테스트하려면 다음 단계를 따르세요.
 
 1. 저장소를 클론(Clone)합니다.
+```text
 git clone [https://github.com/Kimmahone/smart-olympic.git](https://github.com/Kimmahone/smart-olympic.git)
 
 2.프로젝트 폴더로 이동합니다.
+```text
 cd smart-olympic
 
 3. 웹 서버 환경에서 실행합니다. (카메라 권한을 얻기 위해 로컬 서버가 필요합니다.)
