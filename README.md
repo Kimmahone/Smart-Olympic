@@ -43,6 +43,7 @@
 ---
 
 ## 📂 프로젝트 구조 (Directory Structure)
+```text
 📦 smart-olympic
  ┣ 📜 index.html        # 메인 대시보드 및 종목 선택 화면
  ┣ 📜 sprint.html       # 100m 달리기
@@ -52,7 +53,7 @@
  ┣ 📜 taekwondo.html    # 송판 격파
  ┣ 📜 surfing.html      # 서핑 밸런스
  ┗ 📂 media             # BGM, 효과음, 로고 이미지 폴더
-
+```
 ## 💻 로컬 실행 방법 (Getting Started)
 이 프로젝트를 로컬 환경에서 실행하고 테스트하려면 다음 단계를 따르세요.
 
@@ -68,7 +69,6 @@ cd smart-olympic
  - VS Code 사용자: Live Server 익스텐션을 사용하여 index.html을 엽니다.
  - Python 사용자: python -m http.server 8000 실행 후 브라우저에서 localhost:8000 접속
 
-🧑‍🏫 개발자 및 라이선스
- - 기획 및 개발: 포항양덕초 교사 김정준
- - 문의: kimjj0709@gmail.com
- - 개인정보 처리방침: 본 앱은 상업적 목적이 없는 교육용 소프트웨어이며, 개인정보를 수집하지 않습니다.
+## 🧑‍🏫 개발자 및 라이선스
+* **기획 및 개발:** 포항양덕초 교사 김정준
+* **라이선스:** 이 프로젝트는 **MIT 라이선스**를 따릅니다. 전국의 모든 선생님과 학생들을 위해 열려 있습니다! 화면 우측 상단의 `Fork` 버튼을 누르거나 `Download ZIP`을 통해 자유롭게 복제하고, 학교 현장에 맞게 수정하여 활용해 주세요.
