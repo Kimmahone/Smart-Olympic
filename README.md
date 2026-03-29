@@ -56,12 +56,13 @@
 이 프로젝트를 로컬 환경에서 실행하고 테스트하려면 다음 단계를 따르세요.
 
 1. 저장소를 클론(Clone)합니다.
-```text
+```bash
 git clone [https://github.com/Kimmahone/smart-olympic.git](https://github.com/Kimmahone/smart-olympic.git)
-
+```
 2.프로젝트 폴더로 이동합니다.
+```bash
 cd smart-olympic
-
+```
 3. 웹 서버 환경에서 실행합니다. (카메라 권한을 얻기 위해 로컬 서버가 필요합니다.)
 VS Code 사용자: Live Server 익스텐션을 사용하여 index.html을 엽니다.
 Python 사용자: python -m http.server 8000 실행 후 브라우저에서 localhost:8000 접속
