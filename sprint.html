@@ -142,6 +142,11 @@
       await audioCtx.resume();
     }
 
+    // 🌟 중단하기 버튼: 완벽한 초기화를 위해 페이지 새로고침 이벤트 추가!
+    stopBtn.addEventListener('click', () => {
+      location.reload(); 
+    });
+
     replayBtn.addEventListener('click', () => {
       resultModal.style.display = 'none';
       overlay.style.display = 'flex';
@@ -165,7 +170,7 @@
       distance = 0; currentTimeStr = "0.00";
       gameState = 'countdown'; countdownTick = 3; countdownDisplay = "3";
       
-      playSound('sfx-count'); // 🌟 시작할 때 한 번만 재생!
+      playSound('sfx-count'); 
 
       countdownInterval = setInterval(() => {
         countdownTick--;
@@ -179,7 +184,6 @@
           gameState = 'playing';
           startTime = Date.now();
           
-          // 🌟 게임 시작 시점에 BGM 재생!
           const bgm = document.getElementById('bgm');
           if(bgm) { bgm.currentTime = 0; bgm.play(); }
 
@@ -203,13 +207,12 @@
         drawLandmarks(canvasCtx, results.poseLandmarks, {color: '#0085C7', lineWidth: 2, radius: 4});
         canvasCtx.restore();
 
-        // 🌟 달리기 인식 로직 (무릎의 상하 움직임 감지)
         if (gameState === 'playing') {
           const lm = results.poseLandmarks;
           const currentKneeY = (lm[25].y + lm[26].y) / 2;
           
           if (lastKneeY - currentKneeY > 0.04) { 
-            distance += 1.5; // 움직임 폭 감지 시 거리 증가
+            distance += 1.5; 
           }
           lastKneeY = currentKneeY;
         }
@@ -250,7 +253,6 @@
         ctx.textAlign = "right"; ctx.fillStyle = "#ffeb3b";
         ctx.fillText(`⏱️ ${currentTimeStr}초`, cw - 40, 60);
         
-        // 🌟 하단에 100m 진행 상태 바(Progress Bar) 추가
         if (gameState === 'playing') {
           ctx.fillStyle = "rgba(255,255,255,0.3)";
           ctx.fillRect(100, ch - 50, cw - 200, 20);
