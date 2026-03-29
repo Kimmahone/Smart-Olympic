@@ -1,7 +1,7 @@
 # 🥇🥈🥉 스마트 올림픽 (Smart Olympic)
-**교실과 가정을 뒤집어 놓을 100% 온디바이스(On-device) AI 모션 인식 체육 웹앱**
+**온디바이스(On-device) AI 모션 인식 체육 웹앱**
 
-![스마트 올림픽 썸네일](media/logo.png) ## 🚀 서비스 링크 (Demo)
+![스마트 올림픽 썸네일](media/logo.png) # 🚀 서비스 링크 (Demo)
 👉 **[스마트 올림픽 바로가기](https://smart-olympic.vercel.app/)**
 
 ---
