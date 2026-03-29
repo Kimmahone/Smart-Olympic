@@ -1,7 +1,7 @@
 # 🥇🥈🥉 스마트 올림픽 (Smart Olympic)
 **온디바이스(On-device) AI 모션 인식 체육 웹앱**
 
-![스마트 올림픽 썸네일](media/logo.png) # 🚀 서비스 링크 (Demo)
+![스마트 올림픽 썸네일](media/logo.png) ## 🚀 서비스 링크 (Demo)
 👉 **[스마트 올림픽 바로가기](https://smart-olympic.vercel.app/)**
 
 ---
