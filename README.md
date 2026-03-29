@@ -64,8 +64,8 @@ git clone [https://github.com/Kimmahone/smart-olympic.git](https://github.com/Ki
 cd smart-olympic
 ```
 3. 웹 서버 환경에서 실행합니다. (카메라 권한을 얻기 위해 로컬 서버가 필요합니다.)
-VS Code 사용자: Live Server 익스텐션을 사용하여 index.html을 엽니다.
-Python 사용자: python -m http.server 8000 실행 후 브라우저에서 localhost:8000 접속
+ - VS Code 사용자: Live Server 익스텐션을 사용하여 index.html을 엽니다.
+ - Python 사용자: python -m http.server 8000 실행 후 브라우저에서 localhost:8000 접속
 
 🧑‍🏫 개발자 및 라이선스
 기획 및 개발: 5학년 담임교사 김정준
