@@ -60,7 +60,6 @@
 git clone [https://github.com/Kimmahone/smart-olympic.git](https://github.com/Kimmahone/smart-olympic.git)
 
 2.프로젝트 폴더로 이동합니다.
-```text
 cd smart-olympic
 
 3. 웹 서버 환경에서 실행합니다. (카메라 권한을 얻기 위해 로컬 서버가 필요합니다.)
