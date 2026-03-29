@@ -52,3 +52,27 @@
  ┣ 📜 taekwondo.html    # 송판 격파
  ┣ 📜 surfing.html      # 서핑 밸런스
  ┗ 📂 media             # BGM, 효과음, 로고 이미지 폴더
+
+💻 로컬 실행 방법 (Getting Started)
+이 프로젝트를 로컬 환경에서 실행하고 테스트하려면 다음 단계를 따르세요.
+
+저장소를 클론(Clone)합니다.
+
+Bash
+git clone [https://github.com/여기에-선생님의-깃허브-아이디/smart-olympic.git](https://github.com/여기에-선생님의-깃허브-아이디/smart-olympic.git)
+프로젝트 폴더로 이동합니다.
+
+Bash
+cd smart-olympic
+웹 서버 환경에서 실행합니다. (카메라 권한을 얻기 위해 로컬 서버가 필요합니다.)
+
+VS Code 사용자: Live Server 익스텐션을 사용하여 index.html을 엽니다.
+
+Python 사용자: python -m http.server 8000 실행 후 브라우저에서 localhost:8000 접속
+
+🧑‍🏫 개발자 및 라이선스
+기획 및 개발: 5학년 담임교사 김정준
+
+문의: kimjj0709@gmail.com
+
+개인정보 처리방침: 본 앱은 상업적 목적이 없는 교육용 소프트웨어이며, 개인정보를 수집하지 않습니다. (메인 페이지 하단 참조)
