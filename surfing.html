@@ -68,7 +68,7 @@
     <canvas id="output_canvas"></canvas>
     
     <div id="overlay" class="overlay">
-      <h2>몸을 좌우로 기울여<br>상어를 피하고 동전을 드세요!</h2>
+      <h2>몸을 좌우로 기울여<br>돌고래를 피하고 동전을 드세요!</h2>
       <button id="start-btn">도전 시작!</button>
     </div>
     
@@ -90,6 +90,11 @@
   </div>
 
   <script>
+    // 🌟 커스텀 이미지 3종 미리 불러오기
+    const customCoinImg = new Image(); customCoinImg.src = 'media/coin.png';
+    const customSurferImg = new Image(); customSurferImg.src = 'media/surfer.png';
+    const customDolphinImg = new Image(); customDolphinImg.src = 'media/dolphin.png';
+
     const videoElement = document.getElementById('input_video');
     const canvasElement = document.getElementById('output_canvas');
     canvasElement.width = 1280; canvasElement.height = 720;
@@ -116,14 +121,9 @@
     let gameState = 'waiting'; let startTime = 0; 
     let countdownTick = 3; let countdownDisplay = ""; let countdownInterval = null;
     
-    // 🌟 오리지널 게임 변수 복구
-    let score = 0; 
-    let lives = 3; 
-    let playerX = 0.5; 
-    let obstacles = []; 
-    let coins = []; 
-    let speedMultiplier = 1.0; 
-    let lastSpawnTime = 0;
+    let score = 0; let lives = 3; let playerX = 0.5; 
+    let obstacles = []; let coins = []; 
+    let speedMultiplier = 1.0; let lastSpawnTime = 0;
 
     let mediaRecorder; let recordedChunks = [];
     let audioCtx; let audioDest; let globalMicStream = null;
@@ -150,7 +150,6 @@
       await audioCtx.resume();
     }
 
-    // 🌟 깔끔한 중단하기 (새로고침)
     stopBtn.addEventListener('click', () => { location.reload(); });
 
     replayBtn.addEventListener('click', () => {
@@ -173,7 +172,6 @@
       uiHome.style.opacity = '0';
       stopBtn.style.display = 'block';
 
-      // 변수 초기화
       score = 0; lives = 3; playerX = 0.5; obstacles = []; coins = []; speedMultiplier = 1.0;
       gameState = 'countdown'; countdownTick = 3; countdownDisplay = "3";
       
@@ -190,7 +188,7 @@
           clearInterval(countdownInterval);
           gameState = 'playing';
           startTime = Date.now();
-          lastSpawnTime = Date.now(); // 🌟 스폰 타이머 초기화
+          lastSpawnTime = Date.now(); 
           
           const bgm = document.getElementById('bgm');
           if(bgm) { bgm.currentTime = 0; bgm.play(); }
@@ -207,27 +205,24 @@
       canvasCtx.drawImage(results.image, 0, 0, cw, ch);
       recordCtx.drawImage(results.image, 0, 0, cw, ch);
 
-      // 서핑 바다 느낌의 반투명 오버레이
       canvasCtx.fillStyle = "rgba(129, 212, 250, 0.35)"; canvasCtx.fillRect(0, 0, cw, ch);
       recordCtx.fillStyle = "rgba(129, 212, 250, 0.35)"; recordCtx.fillRect(0, 0, cw, ch);
 
       if (results.poseLandmarks && gameState === 'playing') {
         const lm = results.poseLandmarks;
         
-        // 🌟 어깨 중심을 기준으로 플레이어 위치 계산 (오리지널 로직)
         const shoulderMidX = (lm[11].x + lm[12].x) / 2;
         let targetX = (shoulderMidX - 0.5) * 1.5 + 0.5; 
         if (targetX < 0.1) targetX = 0.1; 
         if (targetX > 0.9) targetX = 0.9;
-        playerX += (targetX - playerX) * 0.2; // 부드러운 움직임
+        playerX += (targetX - playerX) * 0.2; 
 
         const now = Date.now(); 
         const elapsedTime = (now - startTime) / 1000;
         
-        score += 0.3; // 생존 점수
-        speedMultiplier = 1.0 + (elapsedTime / 30); // 시간 지날수록 속도 증가
+        score += 0.3; 
+        speedMultiplier = 1.0 + (elapsedTime / 30); 
 
-        // 아이템 & 상어 스폰
         if (now - lastSpawnTime > 800 / speedMultiplier) {
             const isCoin = Math.random() > 0.6; 
             if(isCoin) { 
@@ -240,7 +235,6 @@
 
         const playerY = 0.8; const hitBoxRadius = 0.08; 
 
-        // 상어(장애물) 충돌 처리
         for (let i = obstacles.length - 1; i >= 0; i--) {
             let obs = obstacles[i]; 
             obs.y += 0.015 * speedMultiplier; 
@@ -250,7 +244,6 @@
                 obstacles.splice(i, 1); 
                 playSound('sfx-damage'); 
                 
-                // 데미지 시 화면 빨갛게 깜빡임
                 canvasCtx.fillStyle = "rgba(255, 0, 0, 0.4)"; canvasCtx.fillRect(0, 0, cw, ch);
                 recordCtx.fillStyle = "rgba(255, 0, 0, 0.4)"; recordCtx.fillRect(0, 0, cw, ch);
                 
@@ -266,7 +259,6 @@
             if (obs.y > 1.1) obstacles.splice(i, 1);
         }
 
-        // 동전 획득 처리
         for (let i = coins.length - 1; i >= 0; i--) {
             let coin = coins[i]; 
             coin.y += 0.015 * speedMultiplier;
@@ -280,31 +272,45 @@
             if (coin.y > 1.1) coins.splice(i, 1);
         }
 
-        // 뼈대 그리기
         canvasCtx.save();
         canvasCtx.globalAlpha = 0.5;
         drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, {color: 'rgba(255,255,255,0.5)', lineWidth: 4});
         canvasCtx.restore();
 
-        // 🌟 이모지 렌더링 (화면 & 녹화 캔버스 모두 적용)
         const drawGameObjects = (ctx) => {
+          // 🌟 돌고래(장애물) 그리기
           for (let obs of obstacles) { 
             ctx.fillStyle = "rgba(255, 255, 255, 0.7)"; 
             ctx.beginPath(); ctx.arc(obs.x * cw, obs.y * ch, 40, 0, 2*Math.PI); ctx.fill();
-            ctx.font = "80px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-            ctx.fillText("🦈", obs.x * cw, obs.y * ch); 
-          }
-          for (let coin of coins) { 
-            ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
-            ctx.beginPath(); ctx.arc(coin.x * cw, coin.y * ch, 40, 0, 2*Math.PI); ctx.fill();
-            ctx.font = "80px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-            ctx.fillText("🪙", coin.x * cw, coin.y * ch); 
+            if (customDolphinImg.complete && customDolphinImg.naturalHeight !== 0) {
+              ctx.drawImage(customDolphinImg, obs.x * cw - 50, obs.y * ch - 50, 100, 100);
+            } else {
+              ctx.font = "80px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+              ctx.fillText("🦈", obs.x * cw, obs.y * ch); 
+            }
           }
           
+          // 🌟 동전 그리기
+          for (let coin of coins) { 
+            ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+            ctx.beginPath(); ctx.arc(coin.x * cw, coin.y * ch, 40, 0, 2*Math.PI); ctx.fill();
+            if (customCoinImg.complete && customCoinImg.naturalHeight !== 0) {
+              ctx.drawImage(customCoinImg, coin.x * cw - 40, coin.y * ch - 40, 80, 80);
+            } else {
+              ctx.font = "80px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+              ctx.fillText("🪙", coin.x * cw, coin.y * ch);
+            }
+          }
+          
+          // 🌟 서퍼 그리기
           ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
           ctx.beginPath(); ctx.arc(playerX * cw, playerY * ch, 90, 0, 2*Math.PI); ctx.fill();
-          ctx.font = "180px sans-serif"; 
-          ctx.fillText("🏄‍♂️", playerX * cw, playerY * ch);
+          if (customSurferImg.complete && customSurferImg.naturalHeight !== 0) {
+            ctx.drawImage(customSurferImg, playerX * cw - 100, playerY * ch - 100, 200, 200);
+          } else {
+            ctx.font = "180px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillText("🏄‍♂️", playerX * cw, playerY * ch);
+          }
         };
         
         drawGameObjects(canvasCtx);

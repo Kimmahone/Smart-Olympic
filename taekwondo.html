@@ -115,7 +115,6 @@
     let gameState = 'waiting'; let hitCount = 0; let timeLeftStr = "30.00"; let startTime = 0;
     let countdownTick = 3; let countdownDisplay = ""; let countdownInterval = null;
     
-    // 🌟 오리지널 변수 복구 (타겟, 이펙트, 속도 측정을 위한 이전 발목 위치)
     let targets = []; 
     let hitEffects = []; 
     let previousLeftAnkle = null; 
@@ -147,7 +146,7 @@
     }
 
     function spawnTarget() { 
-      // 타겟(송판)이 화면 위쪽에 랜덤하게 생성되도록
+      // 타겟(송판) 생성 시 현재 시간을 기록합니다.
       targets.push({ x: Math.random() * 0.6 + 0.2, y: Math.random() * 0.5 + 0.2, radius: 0.12, createdAt: Date.now() }); 
     }
 
@@ -173,7 +172,6 @@
       uiHome.style.opacity = '0';
       stopBtn.style.display = 'block';
 
-      // 변수 초기화
       hitCount = 0; timeLeftStr = "30.00"; targets = []; hitEffects = [];
       previousLeftAnkle = null; previousRightAnkle = null;
       gameState = 'countdown'; countdownTick = 3; countdownDisplay = "3";
@@ -195,34 +193,28 @@
           const bgm = document.getElementById('bgm');
           if(bgm) { bgm.currentTime = 0; bgm.play(); }
 
-          // 시작과 동시에 송판 3개 띄우기
           spawnTarget(); spawnTarget(); spawnTarget();
-          
           startRecording();
         }
       }, COUNTDOWN_SPEED);
     }
 
-    // 🌟 오리지널 송판 그리기 함수 (화면 & 녹화 캔버스 모두 적용)
     function drawBoard(ctx, t, cw, ch) {
       const tx = t.x * cw; const ty = t.y * ch; 
       const boardWidth = t.radius * cw * 1.6; const boardHeight = t.radius * ch * 1.0;
       
       ctx.save(); 
       ctx.translate(tx, ty);
-      // 나무 질감 배경
       ctx.fillStyle = "#A1887F"; ctx.strokeStyle = "#5D4037"; ctx.lineWidth = 6;
       ctx.fillRect(-boardWidth / 2, -boardHeight / 2, boardWidth, boardHeight); 
       ctx.strokeRect(-boardWidth / 2, -boardHeight / 2, boardWidth, boardHeight);
       
-      // 나무결 선
       ctx.strokeStyle = "rgba(0,0,0,0.1)"; ctx.lineWidth = 3;
       for(let j=0; j<3; j++) { 
         let yOffset = (j - 1) * (boardHeight / 4); 
         ctx.beginPath(); ctx.moveTo(-boardWidth/2 + 10, yOffset); ctx.lineTo(boardWidth/2 - 10, yOffset); ctx.stroke(); 
       }
       
-      // 깨지는 중앙 절취선
       ctx.strokeStyle = "white"; ctx.lineWidth = 4; ctx.setLineDash([15, 8]); 
       ctx.beginPath(); ctx.moveTo(0, -boardHeight / 2 + 10); ctx.lineTo(0, boardHeight / 2 - 10); ctx.stroke(); 
       ctx.setLineDash([]);
@@ -239,7 +231,6 @@
       if (results.poseLandmarks) {
         canvasCtx.save();
         canvasCtx.globalAlpha = 0.5;
-        // 발차기를 강조하기 위해 발목(27, 28) 관절 크기를 크게 표시!
         drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, {color: '#FFFFFF', lineWidth: 4});
         drawLandmarks(canvasCtx, results.poseLandmarks, {
           color: '#ff9800', lineWidth: 2, 
@@ -247,10 +238,9 @@
         });
         canvasCtx.restore();
 
-        // 🌟 송판 격파 및 속도(Velocity) 측정 로직 완벽 복원
         if (gameState === 'playing') {
           const lm = results.poseLandmarks; 
-          const velocityThreshold = 0.03; // 발이 일정 속도 이상으로 움직여야 깨짐
+          const velocityThreshold = 0.03; 
           
           let leftAnkleVelocity = 0; 
           if (previousLeftAnkle) { leftAnkleVelocity = Math.hypot(lm[27].x - previousLeftAnkle.x, lm[27].y - previousLeftAnkle.y); }
@@ -260,29 +250,36 @@
           previousLeftAnkle = { x: lm[27].x, y: lm[27].y }; 
           previousRightAnkle = { x: lm[28].x, y: lm[28].y };
 
+          const now = Date.now();
+
           for (let i = targets.length - 1; i >= 0; i--) {
             let t = targets[i]; 
+
+            // 🌟 [수정된 부분] 5초(5000ms) 이상 된 송판은 파괴 효과 없이 조용히 교체합니다.
+            if (now - t.createdAt > 5000) {
+                targets.splice(i, 1);
+                spawnTarget();
+                continue; // 아래 격파 판정을 건너뛰고 다음 송판으로 넘어갑니다.
+            }
+
             let distLeft = Math.hypot(lm[27].x - t.x, lm[27].y - t.y); 
             let distRight = Math.hypot(lm[28].x - t.x, lm[28].y - t.y);
             
-            // 거리가 가깝고 AND 발 속도가 빨라야 격파 인정!
             const isLeftHit = distLeft < t.radius && leftAnkleVelocity > velocityThreshold; 
             const isRightHit = distRight < t.radius && rightAnkleVelocity > velocityThreshold;
 
             if (isLeftHit || isRightHit) {
-              hitCount += 10; // 점수 추가
+              hitCount += 10; 
               hitEffects.push({ x: t.x, y: t.y, time: Date.now() }); 
               targets.splice(i, 1); 
               spawnTarget(); 
               playSound('sfx-break'); 
             } else {
-              // 송판 그리기
               drawBoard(canvasCtx, t, cw, ch);
               drawBoard(recordCtx, t, cw, ch);
             }
           }
           
-          // 폭발 효과(💥) 그리기 (300ms 유지)
           for (let i = hitEffects.length - 1; i >= 0; i--) {
             let effect = hitEffects[i]; 
             if (Date.now() - effect.time > 300) { 
