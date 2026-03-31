@@ -90,7 +90,6 @@
   </div>
 
   <script>
-    // 🌟 커스텀 이미지 3종 미리 불러오기
     const customCoinImg = new Image(); customCoinImg.src = 'media/coin.png';
     const customSurferImg = new Image(); customSurferImg.src = 'media/surfer.png';
     const customDolphinImg = new Image(); customDolphinImg.src = 'media/dolphin.png';
@@ -111,6 +110,10 @@
     const recordCanvas = document.createElement('canvas');
     recordCanvas.width = 1280; recordCanvas.height = 720;
     const recordCtx = recordCanvas.getContext('2d');
+
+    const highlightCanvas = document.createElement('canvas');
+    highlightCanvas.width = 1280; highlightCanvas.height = 720;
+    const highlightCtx = highlightCanvas.getContext('2d');
 
     function playSound(id) { 
       const s = document.getElementById(id); 
@@ -135,10 +138,10 @@
         try {
           globalMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
           const micSource = audioCtx.createMediaStreamSource(globalMicStream);
-          const micGain = audioCtx.createGain(); micGain.gain.value = 3.0; // 목소리 증폭
+          const micGain = audioCtx.createGain(); micGain.gain.value = 3.0; 
           micSource.connect(micGain); micGain.connect(audioDest);
         } catch (e) {}
-        const gameGain = audioCtx.createGain(); gameGain.gain.value = 0.4; // 게임 볼륨 조절
+        const gameGain = audioCtx.createGain(); gameGain.gain.value = 0.4; 
         gameGain.connect(audioDest); gameGain.connect(audioCtx.destination);
         document.querySelectorAll('audio').forEach(el => {
           if (!el.dataset.routed) {
@@ -208,6 +211,8 @@
       canvasCtx.fillStyle = "rgba(129, 212, 250, 0.35)"; canvasCtx.fillRect(0, 0, cw, ch);
       recordCtx.fillStyle = "rgba(129, 212, 250, 0.35)"; recordCtx.fillRect(0, 0, cw, ch);
 
+      let checkGameOver = false; 
+
       if (results.poseLandmarks && gameState === 'playing') {
         const lm = results.poseLandmarks;
         
@@ -244,15 +249,13 @@
                 obstacles.splice(i, 1); 
                 playSound('sfx-damage'); 
                 
-                canvasCtx.fillStyle = "rgba(255, 0, 0, 0.4)"; canvasCtx.fillRect(0, 0, cw, ch);
-                recordCtx.fillStyle = "rgba(255, 0, 0, 0.4)"; recordCtx.fillRect(0, 0, cw, ch);
+                // 🌟 버그 수정: 빨간 배경은 플레이어가 보는 화면(canvasCtx)에만 칠하고, 
+                // 녹화 및 캡처용 캔버스(recordCtx)에는 칠하지 않습니다.
+                canvasCtx.fillStyle = "rgba(255, 0, 0, 0.4)"; 
+                canvasCtx.fillRect(0, 0, cw, ch);
                 
                 if(lives <= 0) {
-                    gameState = 'finished'; stopRecording(); stopBtn.style.display = 'none';
-                    document.getElementById('bgm').pause(); playSound('sfx-gameover'); 
-                    document.getElementById('final-record').innerText = `최종 점수: ${Math.floor(score)}점`; 
-                    resultModal.style.display = 'flex';
-                    uiHeader.style.opacity = '1'; uiHome.style.opacity = '1';
+                    checkGameOver = true; 
                 }
                 continue;
             }
@@ -278,7 +281,6 @@
         canvasCtx.restore();
 
         const drawGameObjects = (ctx) => {
-          // 🌟 돌고래(장애물) 그리기
           for (let obs of obstacles) { 
             ctx.fillStyle = "rgba(255, 255, 255, 0.7)"; 
             ctx.beginPath(); ctx.arc(obs.x * cw, obs.y * ch, 40, 0, 2*Math.PI); ctx.fill();
@@ -290,7 +292,6 @@
             }
           }
           
-          // 🌟 동전 그리기
           for (let coin of coins) { 
             ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
             ctx.beginPath(); ctx.arc(coin.x * cw, coin.y * ch, 40, 0, 2*Math.PI); ctx.fill();
@@ -302,7 +303,6 @@
             }
           }
           
-          // 🌟 서퍼 그리기
           ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
           ctx.beginPath(); ctx.arc(playerX * cw, playerY * ch, 90, 0, 2*Math.PI); ctx.fill();
           if (customSurferImg.complete && customSurferImg.naturalHeight !== 0) {
@@ -319,6 +319,16 @@
       
       drawUI(canvasCtx, cw, ch);
       drawUI(recordCtx, cw, ch);
+
+      if (gameState === 'playing' && checkGameOver) {
+        highlightCtx.drawImage(recordCanvas, 0, 0, cw, ch); 
+        
+        gameState = 'finished'; stopRecording(); stopBtn.style.display = 'none';
+        document.getElementById('bgm').pause(); playSound('sfx-gameover'); 
+        document.getElementById('final-record').innerText = `최종 점수: ${Math.floor(score)}점`; 
+        resultModal.style.display = 'flex';
+        uiHeader.style.opacity = '1'; uiHome.style.opacity = '1';
+      }
     }
 
     function drawUI(ctx, cw, ch) {
@@ -361,9 +371,19 @@
 
     document.getElementById('save-img-btn').onclick = () => {
       const name = document.getElementById('player-name').value || "선수"; const cw = 1280; const ch = 720;
-      recordCtx.font = "80px 'Jua', sans-serif"; recordCtx.textAlign = "center"; recordCtx.fillStyle = "white"; recordCtx.strokeStyle = "black"; recordCtx.lineWidth = 6;
-      recordCtx.strokeText(`🏆 ${name}의 서핑 점수: ${Math.floor(score)}점`, cw / 2, ch - 50); recordCtx.fillText(`🏆 ${name}의 서핑 점수: ${Math.floor(score)}점`, cw / 2, ch - 50);
-      const a = document.createElement('a'); a.href = recordCanvas.toDataURL();
+      
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = cw; tempCanvas.height = ch;
+      const tempCtx = tempCanvas.getContext('2d');
+      
+      tempCtx.drawImage(highlightCanvas, 0, 0, cw, ch);
+      
+      tempCtx.font = "80px 'Jua', sans-serif"; tempCtx.textAlign = "center"; 
+      tempCtx.fillStyle = "white"; tempCtx.strokeStyle = "black"; tempCtx.lineWidth = 6;
+      tempCtx.strokeText(`🏆 ${name}의 서핑 점수: ${Math.floor(score)}점`, cw / 2, ch - 50); 
+      tempCtx.fillText(`🏆 ${name}의 서핑 점수: ${Math.floor(score)}점`, cw / 2, ch - 50);
+      
+      const a = document.createElement('a'); a.href = tempCanvas.toDataURL();
       a.download = `스마트올림픽_서핑_${name}_기록증.png`; a.click();
     };
 

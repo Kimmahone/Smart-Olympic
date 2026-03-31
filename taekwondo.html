@@ -106,6 +106,10 @@
     recordCanvas.width = 1280; recordCanvas.height = 720;
     const recordCtx = recordCanvas.getContext('2d');
 
+    const highlightCanvas = document.createElement('canvas');
+    highlightCanvas.width = 1280; highlightCanvas.height = 720;
+    const highlightCtx = highlightCanvas.getContext('2d');
+
     function playSound(id) { 
       const s = document.getElementById(id); 
       if(s){ s.currentTime = 0; s.play().catch(e => console.warn(e)); } 
@@ -130,10 +134,10 @@
         try {
           globalMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
           const micSource = audioCtx.createMediaStreamSource(globalMicStream);
-          const micGain = audioCtx.createGain(); micGain.gain.value = 3.0; // 목소리 증폭
+          const micGain = audioCtx.createGain(); micGain.gain.value = 3.0; 
           micSource.connect(micGain); micGain.connect(audioDest);
         } catch (e) {}
-        const gameGain = audioCtx.createGain(); gameGain.gain.value = 0.4; // 게임 볼륨
+        const gameGain = audioCtx.createGain(); gameGain.gain.value = 0.4; 
         gameGain.connect(audioDest); gameGain.connect(audioCtx.destination);
         document.querySelectorAll('audio').forEach(el => {
           if (!el.dataset.routed) {
@@ -146,7 +150,6 @@
     }
 
     function spawnTarget() { 
-      // 타겟(송판) 생성 시 현재 시간을 기록합니다.
       targets.push({ x: Math.random() * 0.6 + 0.2, y: Math.random() * 0.5 + 0.2, radius: 0.12, createdAt: Date.now() }); 
     }
 
@@ -255,11 +258,10 @@
           for (let i = targets.length - 1; i >= 0; i--) {
             let t = targets[i]; 
 
-            // 🌟 [수정된 부분] 5초(5000ms) 이상 된 송판은 파괴 효과 없이 조용히 교체합니다.
             if (now - t.createdAt > 5000) {
                 targets.splice(i, 1);
                 spawnTarget();
-                continue; // 아래 격파 판정을 건너뛰고 다음 송판으로 넘어갑니다.
+                continue; 
             }
 
             let distLeft = Math.hypot(lm[27].x - t.x, lm[27].y - t.y); 
@@ -292,20 +294,26 @@
         }
       }
 
-      drawUI(canvasCtx, cw, ch);
-      drawUI(recordCtx, cw, ch);
-
+      // 🌟 [수정 핵심] 화면을 그리기(drawUI) 전에 시간을 먼저 업데이트합니다.
       if (gameState === 'playing') {
         let elapsed = (Date.now() - startTime) / 1000;
         let timeLeft = Math.max(0, 30 - elapsed);
         timeLeftStr = timeLeft.toFixed(2);
-        
-        if (timeLeft <= 0) {
+      }
+
+      drawUI(canvasCtx, cw, ch);
+      drawUI(recordCtx, cw, ch);
+
+      // 🌟 이미 0.00초로 그려진 화면을 바탕으로 캡처를 진행합니다.
+      if (gameState === 'playing') {
+        if (parseFloat(timeLeftStr) <= 0) {
+          highlightCtx.drawImage(recordCanvas, 0, 0, cw, ch);
+          
           gameState = 'finished'; stopRecording();
           stopBtn.style.display = 'none';
           document.getElementById('bgm').pause();
           playSound('sfx-cheer');
-          document.getElementById('final-record').innerText = `최종 점수: ${hitCount}점`;
+          document.getElementById('final-record').innerText = `최종 기록: ${hitCount}점`;
           resultModal.style.display = 'flex';
           uiHeader.style.opacity = '1';
           uiHome.style.opacity = '1';
@@ -353,9 +361,19 @@
 
     document.getElementById('save-img-btn').onclick = () => {
       const name = document.getElementById('player-name').value || "선수"; const cw = 1280; const ch = 720;
-      recordCtx.font = "80px 'Jua', sans-serif"; recordCtx.textAlign = "center"; recordCtx.fillStyle = "white"; recordCtx.strokeStyle = "black"; recordCtx.lineWidth = 6;
-      recordCtx.strokeText(`🏆 ${name}의 격파 기록: ${hitCount}점`, cw / 2, ch - 50); recordCtx.fillText(`🏆 ${name}의 격파 기록: ${hitCount}점`, cw / 2, ch - 50);
-      const a = document.createElement('a'); a.href = recordCanvas.toDataURL();
+      
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = cw; tempCanvas.height = ch;
+      const tempCtx = tempCanvas.getContext('2d');
+      
+      tempCtx.drawImage(highlightCanvas, 0, 0, cw, ch);
+      
+      tempCtx.font = "80px 'Jua', sans-serif"; tempCtx.textAlign = "center"; 
+      tempCtx.fillStyle = "white"; tempCtx.strokeStyle = "black"; tempCtx.lineWidth = 6;
+      tempCtx.strokeText(`🏆 ${name}의 격파 점수: ${hitCount}점`, cw / 2, ch - 50); 
+      tempCtx.fillText(`🏆 ${name}의 격파 점수: ${hitCount}점`, cw / 2, ch - 50);
+      
+      const a = document.createElement('a'); a.href = tempCanvas.toDataURL();
       a.download = `스마트올림픽_태권도_${name}_기록증.png`; a.click();
     };
 

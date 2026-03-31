@@ -108,6 +108,11 @@
     recordCanvas.width = 1280; recordCanvas.height = 720;
     const recordCtx = recordCanvas.getContext('2d');
 
+    // 🌟 30초 종료 순간 캡처를 위한 하이라이트 전용 캔버스 추가
+    const highlightCanvas = document.createElement('canvas');
+    highlightCanvas.width = 1280; highlightCanvas.height = 720;
+    const highlightCtx = highlightCanvas.getContext('2d');
+
     function playSound(id) { 
       const s = document.getElementById(id); 
       if(s){ s.currentTime = 0; s.play().catch(e => console.warn(e)); } 
@@ -117,7 +122,6 @@
     let gameState = 'waiting'; let startTime = 0; let timeLeftStr = "30.00";
     let countdownTick = 3; let countdownDisplay = ""; let countdownInterval = null;
     
-    // 🌟 선생님의 원래 변수 복구
     let jumpCount = 0; 
     let motionStep = 0; 
     let stepMessage = "1. 양팔/다리 옆으로!";
@@ -132,10 +136,10 @@
         try {
           globalMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
           const micSource = audioCtx.createMediaStreamSource(globalMicStream);
-          const micGain = audioCtx.createGain(); micGain.gain.value = 3.0; // 목소리 증폭
+          const micGain = audioCtx.createGain(); micGain.gain.value = 3.0; 
           micSource.connect(micGain); micGain.connect(audioDest);
         } catch (e) {}
-        const gameGain = audioCtx.createGain(); gameGain.gain.value = 0.4; // 게임 볼륨 조절
+        const gameGain = audioCtx.createGain(); gameGain.gain.value = 0.4; 
         gameGain.connect(audioDest); gameGain.connect(audioCtx.destination);
         document.querySelectorAll('audio').forEach(el => {
           if (!el.dataset.routed) {
@@ -169,7 +173,6 @@
       uiHome.style.opacity = '0';
       stopBtn.style.display = 'block';
 
-      // 🌟 변수 초기화
       jumpCount = 0; motionStep = 0; stepMessage = "1. 양팔/다리 옆으로!"; timeLeftStr = "30.00";
       gameState = 'countdown'; countdownTick = 3; countdownDisplay = "3";
       
@@ -210,7 +213,6 @@
         drawLandmarks(canvasCtx, results.poseLandmarks, {color: '#ff9800', lineWidth: 2, radius: 4});
         canvasCtx.restore();
 
-        // 🌟 선생님 원래 코드로 완벽 복구
         if (gameState === 'playing') {
           const lm = results.poseLandmarks;
           const wristY = (lm[15].y + lm[16].y) / 2; 
@@ -248,6 +250,9 @@
         timeLeftStr = timeLeft.toFixed(2);
         
         if (timeLeft <= 0) {
+          // 🌟 하이라이트 캡처 로직: 30초 타이머가 종료되는 찰나의 순간을 몰래 저장!
+          highlightCtx.drawImage(recordCanvas, 0, 0, cw, ch);
+          
           gameState = 'finished'; stopRecording();
           stopBtn.style.display = 'none';
           document.getElementById('bgm').pause();
@@ -269,7 +274,6 @@
         ctx.fillStyle = "#ffeb3b";
         ctx.fillText(countdownDisplay, cw/2, ch/2);
       } else if (gameState === 'playing' || gameState === 'finished') {
-        // 시간 5초 이하일 때 빨간색으로 깜빡이는 기능 복구
         let timeColor = parseFloat(timeLeftStr) <= 5.00 ? "#ff1744" : "#ffeb3b";
         
         ctx.font = "bold 80px 'Jua', sans-serif";
@@ -278,7 +282,6 @@
         ctx.textAlign = "right"; ctx.fillStyle = timeColor;
         ctx.fillText(`⏳ ${timeLeftStr}초`, cw - 40, 60);
         
-        // 🌟 하단 동작 안내 멘트 복구
         if (gameState === 'playing') {
           ctx.font = "bold 70px 'Jua', sans-serif";
           ctx.textAlign = "center"; ctx.fillStyle = "white";
@@ -308,9 +311,20 @@
 
     document.getElementById('save-img-btn').onclick = () => {
       const name = document.getElementById('player-name').value || "선수"; const cw = 1280; const ch = 720;
-      recordCtx.font = "80px 'Jua', sans-serif"; recordCtx.textAlign = "center"; recordCtx.fillStyle = "white"; recordCtx.strokeStyle = "black"; recordCtx.lineWidth = 6;
-      recordCtx.strokeText(`🏆 ${name}의 체조 기록: ${jumpCount}개`, cw / 2, ch - 50); recordCtx.fillText(`🏆 ${name}의 체조 기록: ${jumpCount}개`, cw / 2, ch - 50);
-      const a = document.createElement('a'); a.href = recordCanvas.toDataURL();
+      
+      // 🌟 임시 캔버스를 만들어 저장해둔 하이라이트 사진 위에 텍스트 입히기
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = cw; tempCanvas.height = ch;
+      const tempCtx = tempCanvas.getContext('2d');
+      
+      tempCtx.drawImage(highlightCanvas, 0, 0, cw, ch);
+      
+      tempCtx.font = "80px 'Jua', sans-serif"; tempCtx.textAlign = "center"; 
+      tempCtx.fillStyle = "white"; tempCtx.strokeStyle = "black"; tempCtx.lineWidth = 6;
+      tempCtx.strokeText(`🏆 ${name}의 체조 기록: ${jumpCount}개`, cw / 2, ch - 50); 
+      tempCtx.fillText(`🏆 ${name}의 체조 기록: ${jumpCount}개`, cw / 2, ch - 50);
+      
+      const a = document.createElement('a'); a.href = tempCanvas.toDataURL();
       a.download = `스마트올림픽_체조_${name}_기록증.png`; a.click();
     };
 

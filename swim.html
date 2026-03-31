@@ -107,6 +107,11 @@
     recordCanvas.width = 1280; recordCanvas.height = 720;
     const recordCtx = recordCanvas.getContext('2d');
 
+    // 🌟 50m 터치 순간 캡처를 위한 하이라이트 전용 캔버스 추가
+    const highlightCanvas = document.createElement('canvas');
+    highlightCanvas.width = 1280; highlightCanvas.height = 720;
+    const highlightCtx = highlightCanvas.getContext('2d');
+
     function playSound(id) { 
       const s = document.getElementById(id); 
       if(s){ s.currentTime = 0; s.play().catch(e => console.warn(e)); } 
@@ -119,10 +124,9 @@
     let leftArmState = 0; 
     let rightArmState = 0;
     
-    // 🌟 팔을 좌우로 얼마나 벌리며 돌렸는지 측정하는 궤적 변수
     let leftWristMinX = 999; let leftWristMaxX = 0;
     let rightWristMinX = 999; let rightWristMaxX = 0;
-    let bonusEffects = []; // 풍차 보너스 글씨 효과 배열
+    let bonusEffects = []; 
     
     let mediaRecorder; let recordedChunks = [];
     let audioCtx; let audioDest; let globalMicStream = null;
@@ -219,48 +223,41 @@
           const leftWrist = lm[15]; const rightWrist = lm[16];
           const leftHip = lm[23]; const rightHip = lm[24];
 
-          // 1. 기준 단위 설정 (몸통 길이)
           const torsoLength = Math.max(Math.abs(((leftHip.y + rightHip.y) / 2) - ((leftShoulder.y + rightShoulder.y) / 2)), 0.1);
 
-          // 2. 상하단 임계값
           const highThresholdL = leftShoulder.y - (torsoLength * 0.3);
           const highThresholdR = rightShoulder.y - (torsoLength * 0.3);
           const lowThresholdL = leftShoulder.y + (torsoLength * 0.8);
           const lowThresholdR = rightShoulder.y + (torsoLength * 0.8);
 
-          // 3. 팔 굽힘 방지선
           const leftArmDist = Math.hypot(leftWrist.x - leftShoulder.x, leftWrist.y - leftShoulder.y);
           const rightArmDist = Math.hypot(rightWrist.x - rightShoulder.x, rightWrist.y - rightShoulder.y);
           const isLeftExtended = leftArmDist > (torsoLength * 0.6);
           const isRightExtended = rightArmDist > (torsoLength * 0.6);
 
-          // --- 왼쪽 팔 풍차돌리기 로직 ---
           if (leftWrist.y < highThresholdL && isLeftExtended) { 
-            if (leftArmState === 0) { // 팔을 방금 올렸을 때 X궤적 초기화
+            if (leftArmState === 0) { 
               leftWristMinX = leftWrist.x; leftWristMaxX = leftWrist.x;
             }
             leftArmState = 1; 
           }
           
-          // 팔이 내려오는 동안 좌우로 얼마나 움직였는지 추적
           if (leftArmState === 1) {
             leftWristMinX = Math.min(leftWristMinX, leftWrist.x);
             leftWristMaxX = Math.max(leftWristMaxX, leftWrist.x);
           }
 
           if (leftWrist.y > lowThresholdL && isLeftExtended && leftArmState === 1) { 
-            // 팔이 다 내려왔을 때 궤적의 너비 계산
             let strokeWidth = leftWristMaxX - leftWristMinX;
             if (strokeWidth > torsoLength * 0.35) {
-              distance += 3; // 풍차돌리기 3m 보너스!
+              distance += 3; 
               bonusEffects.push({ x: leftWrist.x, y: leftWrist.y, time: Date.now() });
             } else {
-              distance += 1; // 도끼질(위아래) 1m
+              distance += 1; 
             }
             leftArmState = 0; 
           }
           
-          // --- 오른쪽 팔 풍차돌리기 로직 ---
           if (rightWrist.y < highThresholdR && isRightExtended) { 
             if (rightArmState === 0) { 
               rightWristMinX = rightWrist.x; rightWristMaxX = rightWrist.x;
@@ -276,7 +273,7 @@
           if (rightWrist.y > lowThresholdR && isRightExtended && rightArmState === 1) { 
             let strokeWidth = rightWristMaxX - rightWristMinX;
             if (strokeWidth > torsoLength * 0.35) {
-              distance += 3; // 풍차돌리기 보너스!
+              distance += 3; 
               bonusEffects.push({ x: rightWrist.x, y: rightWrist.y, time: Date.now() });
             } else {
               distance += 1; 
@@ -284,7 +281,6 @@
             rightArmState = 0; 
           }
 
-          // 🌟 풍차 보너스 글자 효과 렌더링
           for (let i = bonusEffects.length - 1; i >= 0; i--) {
             let effect = bonusEffects[i];
             let age = Date.now() - effect.time;
@@ -292,7 +288,7 @@
               bonusEffects.splice(i, 1); 
             } else {
               let alpha = 1 - (age / 1000);
-              let floatY = effect.y * ch - (age / 5); // 위로 둥둥 떠오르는 효과
+              let floatY = effect.y * ch - (age / 5); 
               const drawBonus = (ctx) => {
                 ctx.fillStyle = `rgba(255, 235, 59, ${alpha})`;
                 ctx.strokeStyle = `rgba(0, 0, 0, ${alpha})`;
@@ -316,6 +312,10 @@
         
         if (distance >= 50) {
           distance = 50;
+          
+          // 🌟 하이라이트 캡처 로직: 50m 결승선을 통과하며 물보라 치는 바로 그 순간 저장!
+          highlightCtx.drawImage(recordCanvas, 0, 0, cw, ch);
+          
           gameState = 'finished'; stopRecording();
           stopBtn.style.display = 'none';
           document.getElementById('bgm').pause();
@@ -373,9 +373,20 @@
 
     document.getElementById('save-img-btn').onclick = () => {
       const name = document.getElementById('player-name').value || "선수"; const cw = 1280; const ch = 720;
-      recordCtx.font = "80px 'Jua', sans-serif"; recordCtx.textAlign = "center"; recordCtx.fillStyle = "white"; recordCtx.strokeStyle = "black"; recordCtx.lineWidth = 6;
-      recordCtx.strokeText(`🏆 ${name}의 수영 기록: ${currentTimeStr}초`, cw / 2, ch - 50); recordCtx.fillText(`🏆 ${name}의 수영 기록: ${currentTimeStr}초`, cw / 2, ch - 50);
-      const a = document.createElement('a'); a.href = recordCanvas.toDataURL();
+      
+      // 🌟 임시 캔버스를 만들어 저장해둔 하이라이트 사진 위에 텍스트를 입힙니다.
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = cw; tempCanvas.height = ch;
+      const tempCtx = tempCanvas.getContext('2d');
+      
+      tempCtx.drawImage(highlightCanvas, 0, 0, cw, ch);
+      
+      tempCtx.font = "80px 'Jua', sans-serif"; tempCtx.textAlign = "center"; 
+      tempCtx.fillStyle = "white"; tempCtx.strokeStyle = "black"; tempCtx.lineWidth = 6;
+      tempCtx.strokeText(`🏆 ${name}의 수영 기록: ${currentTimeStr}초`, cw / 2, ch - 50); 
+      tempCtx.fillText(`🏆 ${name}의 수영 기록: ${currentTimeStr}초`, cw / 2, ch - 50);
+      
+      const a = document.createElement('a'); a.href = tempCanvas.toDataURL();
       a.download = `스마트올림픽_수영_${name}_기록증.png`; a.click();
     };
 

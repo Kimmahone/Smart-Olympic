@@ -25,11 +25,12 @@
     canvas { width: 100%; height: 100%; object-fit: cover; display: block; } 
     video { display: none; }
     
-    .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 20; }
-    .overlay h2 { font-size: 3.5em; margin-bottom: 30px; text-align: center; line-height: 1.3; color: white; }
+    .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 20; padding: 20px;}
+    .overlay h2 { font-size: 3em; margin-bottom: 30px; text-align: center; line-height: 1.4; color: white; }
+    .highlight-text { color: #ffeb3b; font-size: 1.2em; }
     
     button { font-family: 'Jua', sans-serif; font-size: 1.8em; padding: 15px 40px; border: none; border-radius: 50px; cursor: pointer; transition: transform 0.2s; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
-    #start-btn { background: #ffeb3b; color: #333; }
+    #start-btn { background: #ffeb3b; color: #333; margin-top: 10px;}
     button:hover { transform: scale(1.05); }
     
     #stop-btn { position: absolute; bottom: 20px; right: 20px; background: #DF0024; color: white; font-size: 1.2em; padding: 10px 20px; display: none; z-index: 10; }
@@ -66,7 +67,7 @@
     <canvas id="output_canvas"></canvas>
     
     <div id="overlay" class="overlay">
-      <h2>제자리에서 무릎을 높게 들어<br>최대한 빨리 달려주세요!</h2>
+      <h2><span class="highlight-text">발목까지 전신이 다 보이게</span> 물러서주세요!<br>양 발을 빠르고 힘차게 굴려보세요!</h2>
       <button id="start-btn">도전 시작!</button>
     </div>
     
@@ -105,6 +106,10 @@
     recordCanvas.width = 1280; recordCanvas.height = 720;
     const recordCtx = recordCanvas.getContext('2d');
 
+    const highlightCanvas = document.createElement('canvas');
+    highlightCanvas.width = 1280; highlightCanvas.height = 720;
+    const highlightCtx = highlightCanvas.getContext('2d');
+
     function playSound(id) { 
       const s = document.getElementById(id); 
       if(s){ 
@@ -116,7 +121,11 @@
     const COUNTDOWN_SPEED = 500; 
     let gameState = 'waiting'; let distance = 0; let currentTimeStr = "0.00"; let startTime = 0;
     let countdownTick = 3; let countdownDisplay = ""; let countdownInterval = null;
-    let lastKneeY = 0;
+    
+    // 🌟 골반 기준 상대 위치를 기억할 변수 (팔 휘젓기 꼼수 차단용)
+    let prevLKneeRel = null; let prevRKneeRel = null;
+    let prevLAnkleRel = null; let prevRAnkleRel = null;
+    
     let mediaRecorder; let recordedChunks = [];
     let audioCtx; let audioDest; let globalMicStream = null;
 
@@ -127,10 +136,10 @@
         try {
           globalMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
           const micSource = audioCtx.createMediaStreamSource(globalMicStream);
-          const micGain = audioCtx.createGain(); micGain.gain.value = 3.0; // 목소리 증폭
+          const micGain = audioCtx.createGain(); micGain.gain.value = 3.0;
           micSource.connect(micGain); micGain.connect(audioDest);
         } catch (e) {}
-        const gameGain = audioCtx.createGain(); gameGain.gain.value = 0.4; // 게임 볼륨 조절
+        const gameGain = audioCtx.createGain(); gameGain.gain.value = 0.4;
         gameGain.connect(audioDest); gameGain.connect(audioCtx.destination);
         document.querySelectorAll('audio').forEach(el => {
           if (!el.dataset.routed) {
@@ -142,7 +151,6 @@
       await audioCtx.resume();
     }
 
-    // 🌟 중단하기 버튼: 완벽한 초기화를 위해 페이지 새로고침 이벤트 추가!
     stopBtn.addEventListener('click', () => {
       location.reload(); 
     });
@@ -168,6 +176,8 @@
       stopBtn.style.display = 'block';
 
       distance = 0; currentTimeStr = "0.00";
+      prevLKneeRel = null; prevRKneeRel = null; prevLAnkleRel = null; prevRAnkleRel = null;
+
       gameState = 'countdown'; countdownTick = 3; countdownDisplay = "3";
       
       playSound('sfx-count'); 
@@ -209,12 +219,45 @@
 
         if (gameState === 'playing') {
           const lm = results.poseLandmarks;
-          const currentKneeY = (lm[25].y + lm[26].y) / 2;
           
-          if (lastKneeY - currentKneeY > 0.04) { 
-            distance += 1.5; 
+          const leftShoulder = lm[11]; const rightShoulder = lm[12];
+          const leftHip = lm[23]; const rightHip = lm[24];
+          
+          // 🌟 골반 기준 다리의 '상대적인 높이'를 구합니다. (상체가 들썩여도 이 값은 안 변함)
+          const lKneeRel = lm[25].y - leftHip.y;
+          const rKneeRel = lm[26].y - rightHip.y;
+          const lAnkleRel = lm[27].y - leftHip.y;
+          const rAnkleRel = lm[28].y - rightHip.y;
+          
+          const torsoLength = Math.abs(((leftHip.y + rightHip.y) / 2) - ((leftShoulder.y + rightShoulder.y) / 2)) || 0.1;
+
+          if (prevLKneeRel !== null) {
+            // 다리 관절이 '골반과 가까워졌다 멀어졌다' 하는 진짜 뜀박질 변화량만 측정!
+            const lKneeDelta = Math.abs(lKneeRel - prevLKneeRel);
+            const rKneeDelta = Math.abs(rKneeRel - prevRKneeRel);
+            const lAnkleDelta = Math.abs(lAnkleRel - prevLAnkleRel);
+            const rAnkleDelta = Math.abs(rAnkleRel - prevRAnkleRel);
+
+            const totalMovement = lKneeDelta + rKneeDelta + lAnkleDelta + rAnkleDelta;
+            const normalizedMovement = totalMovement / torsoLength;
+
+            if (normalizedMovement > 0.03) { 
+              // 🌟 선생님 요청대로 거리가 늘어나는 배수를 1.0으로 다시 증가시켰습니다!
+              let addedDistance = normalizedMovement * 1.0;
+              
+              // 최대 제한속도 캡 (배수가 늘어났으니 제한도 살짝 여유있게)
+              if (addedDistance > 0.8) {
+                addedDistance = 0.8;
+              }
+              
+              distance += addedDistance; 
+            }
           }
-          lastKneeY = currentKneeY;
+
+          prevLKneeRel = lKneeRel;
+          prevRKneeRel = rKneeRel;
+          prevLAnkleRel = lAnkleRel;
+          prevRAnkleRel = rAnkleRel;
         }
       }
 
@@ -226,6 +269,9 @@
         
         if (distance >= 100) {
           distance = 100;
+          
+          highlightCtx.drawImage(recordCanvas, 0, 0, cw, ch);
+          
           gameState = 'finished'; stopRecording();
           stopBtn.style.display = 'none';
           document.getElementById('bgm').pause();
@@ -249,7 +295,7 @@
       } else if (gameState === 'playing' || gameState === 'finished') {
         ctx.font = "bold 80px 'Jua', sans-serif";
         ctx.textAlign = "left"; ctx.fillStyle = "#0085C7";
-        ctx.fillText(`🏃 ${Math.floor(distance)}m / 100m`, 40, 60);
+        ctx.fillText(`🏃 ${distance.toFixed(1)}m / 100m`, 40, 60);
         ctx.textAlign = "right"; ctx.fillStyle = "#ffeb3b";
         ctx.fillText(`⏱️ ${currentTimeStr}초`, cw - 40, 60);
         
@@ -283,9 +329,19 @@
 
     document.getElementById('save-img-btn').onclick = () => {
       const name = document.getElementById('player-name').value || "선수"; const cw = 1280; const ch = 720;
-      recordCtx.font = "80px 'Jua', sans-serif"; recordCtx.textAlign = "center"; recordCtx.fillStyle = "white"; recordCtx.strokeStyle = "black"; recordCtx.lineWidth = 6;
-      recordCtx.strokeText(`🏆 ${name}의 달리기 기록: ${currentTimeStr}초`, cw / 2, ch - 50); recordCtx.fillText(`🏆 ${name}의 달리기 기록: ${currentTimeStr}초`, cw / 2, ch - 50);
-      const a = document.createElement('a'); a.href = recordCanvas.toDataURL();
+      
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = cw; tempCanvas.height = ch;
+      const tempCtx = tempCanvas.getContext('2d');
+      
+      tempCtx.drawImage(highlightCanvas, 0, 0, cw, ch);
+      
+      tempCtx.font = "80px 'Jua', sans-serif"; tempCtx.textAlign = "center"; 
+      tempCtx.fillStyle = "white"; tempCtx.strokeStyle = "black"; tempCtx.lineWidth = 6;
+      tempCtx.strokeText(`🏆 ${name}의 달리기 기록: ${currentTimeStr}초`, cw / 2, ch - 50); 
+      tempCtx.fillText(`🏆 ${name}의 달리기 기록: ${currentTimeStr}초`, cw / 2, ch - 50);
+      
+      const a = document.createElement('a'); a.href = tempCanvas.toDataURL();
       a.download = `스마트올림픽_달리기_${name}_기록증.png`; a.click();
     };
 

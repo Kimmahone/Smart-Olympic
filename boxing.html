@@ -97,6 +97,10 @@
     recordCanvas.width = 1280; recordCanvas.height = 720;
     const recordCtx = recordCanvas.getContext('2d');
 
+    const highlightCanvas = document.createElement('canvas');
+    highlightCanvas.width = 1280; highlightCanvas.height = 720;
+    const highlightCtx = highlightCanvas.getContext('2d');
+
     function playSound(id) { 
       const s = document.getElementById(id); 
       if(s){ 
@@ -106,9 +110,10 @@
     }
 
     const COUNTDOWN_SPEED = 500; 
-    let gameState = 'waiting'; let score = 0; let timeLeft = 30.00; let startTime = 0;
+    let gameState = 'waiting'; let score = 0; let timeLeft = "30.00"; let startTime = 0;
     let countdownTick = 3; let countdownDisplay = ""; let countdownInterval = null;
     let targets = [];
+    
     let mediaRecorder; let recordedChunks = [];
     let audioCtx; let audioDest; let globalMicStream = null;
 
@@ -134,6 +139,8 @@
       await audioCtx.resume();
     }
 
+    stopBtn.onclick = () => location.reload();
+
     replayBtn.addEventListener('click', () => {
       resultModal.style.display = 'none';
       overlay.style.display = 'flex';
@@ -149,47 +156,43 @@
     });
 
     function startGameCycle() {
-  overlay.style.display = 'none'; 
-  uiHeader.style.opacity = '0';
-  uiHome.style.opacity = '0';
-  stopBtn.style.display = 'block';
+      overlay.style.display = 'none'; 
+      uiHeader.style.opacity = '0';
+      uiHome.style.opacity = '0';
+      stopBtn.style.display = 'block';
 
-  score = 0; timeLeft = 30.00; targets = [];
-  gameState = 'countdown'; countdownTick = 3; countdownDisplay = "3";
-  
-  // ❌ (기존 위치) 여기서 bgm.play() 하던 코드를 삭제하거나 주석 처리하세요.
-  // const bgm = document.getElementById('bgm'); 
-  // if(bgm) { bgm.currentTime = 0; bgm.play(); }
+      score = 0; timeLeft = "30.00"; targets = [];
+      gameState = 'countdown'; countdownTick = 3; countdownDisplay = "3";
 
-  playSound('sfx-count'); 
+      playSound('sfx-count'); 
 
-  countdownInterval = setInterval(() => {
-    countdownTick--;
-    if (countdownTick > 0) {
-      countdownDisplay = countdownTick.toString();
-    } else if (countdownTick === 0) {
-      countdownDisplay = "START!";
-      playSound('sfx-start');
-    } else {
-      clearInterval(countdownInterval);
-      gameState = 'playing';
-      startTime = Date.now();
+      countdownInterval = setInterval(() => {
+        countdownTick--;
+        if (countdownTick > 0) {
+          countdownDisplay = countdownTick.toString();
+        } else if (countdownTick === 0) {
+          countdownDisplay = "START!";
+          playSound('sfx-start');
+        } else {
+          clearInterval(countdownInterval);
+          gameState = 'playing';
+          startTime = Date.now();
 
-      // ⭕ [수정] 여기가 정답입니다! 게임이 진짜 시작될 때 BGM 재생
-      const bgm = document.getElementById('bgm');
-      if(bgm) { 
-        bgm.currentTime = 0; 
-        bgm.play(); 
-      }
+          const bgm = document.getElementById('bgm');
+          if(bgm) { 
+            bgm.currentTime = 0; 
+            bgm.play(); 
+          }
 
-      startRecording();
+          startRecording();
+        }
+      }, COUNTDOWN_SPEED);
     }
-  }, COUNTDOWN_SPEED);
-}
 
     function onResults(results) {
       if (!results.image) return;
       const cw = 1280; const ch = 720;
+      
       canvasCtx.drawImage(results.image, 0, 0, cw, ch);
       recordCtx.drawImage(results.image, 0, 0, cw, ch);
 
@@ -204,6 +207,7 @@
           const lm = results.poseLandmarks;
           const leftHand = {x: lm[19].x * cw, y: lm[19].y * ch};
           const rightHand = {x: lm[20].x * cw, y: lm[20].y * ch};
+          
           targets = targets.filter(t => {
             const tx = t.x * cw; const ty = t.y * ch;
             if (Math.hypot(leftHand.x - tx, leftHand.y - ty) < t.radius + 30 || Math.hypot(rightHand.x - tx, rightHand.y - ty) < t.radius + 30) {
@@ -215,19 +219,30 @@
       }
 
       if (gameState === 'playing') {
-        targets.forEach(t => {
-          canvasCtx.beginPath(); canvasCtx.arc(t.x*cw, t.y*ch, t.radius, 0, 2*Math.PI);
-          canvasCtx.fillStyle = '#DF0024'; canvasCtx.fill();
-          canvasCtx.lineWidth = 5; canvasCtx.strokeStyle = 'white'; canvasCtx.stroke();
-        });
+        const drawTargets = (ctx) => {
+          targets.forEach(t => {
+            ctx.beginPath(); ctx.arc(t.x*cw, t.y*ch, t.radius, 0, 2*Math.PI);
+            ctx.fillStyle = '#DF0024'; ctx.fill();
+            ctx.lineWidth = 5; ctx.strokeStyle = 'white'; ctx.stroke();
+          });
+        };
+        drawTargets(canvasCtx);
+        drawTargets(recordCtx);
+      }
+
+      // 🌟 [수정 핵심] 화면을 그리기(drawUI) 전에 시간을 먼저 업데이트합니다.
+      if (gameState === 'playing') {
+        timeLeft = Math.max(0, 30 - (Date.now() - startTime) / 1000).toFixed(2);
       }
 
       drawUI(canvasCtx, cw, ch);
       drawUI(recordCtx, cw, ch);
 
+      // 🌟 이미 업데이트된 화면을 바탕으로 0.00초 일 때 캡처 진행
       if (gameState === 'playing') {
-        timeLeft = Math.max(0, 30 - (Date.now() - startTime) / 1000).toFixed(2);
-        if (timeLeft <= 0) {
+        if (parseFloat(timeLeft) <= 0) {
+          highlightCtx.drawImage(recordCanvas, 0, 0, cw, ch); // 0.00초가 그려진 완벽한 상태 캡처
+          
           gameState = 'finished'; stopRecording();
           stopBtn.style.display = 'none';
           document.getElementById('bgm').pause();
@@ -241,19 +256,21 @@
     }
 
     function drawUI(ctx, cw, ch) {
-      ctx.font = "bold 120px 'Jua', sans-serif"; // 🌟 카운트다운 더 크게 강조
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.shadowBlur = 15; ctx.shadowColor = "rgba(0,0,0,0.8)";
 
       if (gameState === 'countdown') {
+        ctx.font = "bold 120px 'Jua', sans-serif"; 
         ctx.fillStyle = "#ffeb3b";
         ctx.fillText(countdownDisplay, cw/2, ch/2);
-      } else if (gameState === 'playing') {
+      } else if (gameState === 'playing' || gameState === 'finished') {
+        let timeColor = parseFloat(timeLeft) <= 5.00 ? "#ff1744" : "#ffeb3b";
+        
         ctx.font = "bold 80px 'Jua', sans-serif";
         ctx.textAlign = "left"; ctx.fillStyle = "#DF0024";
-        ctx.fillText(`🥊 ${score}`, 40, 60);
-        ctx.textAlign = "right"; ctx.fillStyle = "#ffeb3b";
-        ctx.fillText(`⏳ ${timeLeft}`, cw - 40, 60);
+        ctx.fillText(`🥊 ${score}점`, 40, 60);
+        ctx.textAlign = "right"; ctx.fillStyle = timeColor;
+        ctx.fillText(`⏳ ${timeLeft}초`, cw - 40, 60);
       }
     }
 
@@ -266,29 +283,44 @@
     function startRecording() {
       recordedChunks = [];
       const stream = new MediaStream([...recordCanvas.captureStream(30).getTracks(), ...audioDest.stream.getTracks()]);
-      mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+      let options = { mimeType: 'video/webm' };
+      if (MediaRecorder.isTypeSupported('video/mp4')) { options = { mimeType: 'video/mp4' }; }
+      mediaRecorder = new MediaRecorder(stream, options);
       mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
       mediaRecorder.start();
     }
-    function stopRecording() { if(mediaRecorder.state === "recording") mediaRecorder.stop(); }
+    
+    function stopRecording() { if(mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop(); }
 
     document.getElementById('save-vid-btn').onclick = () => {
-      const blob = new Blob(recordedChunks, { type: 'video/webm' });
+      const actualMimeType = mediaRecorder.mimeType || 'video/webm'; const ext = actualMimeType.includes('mp4') ? 'mp4' : 'webm';
+      const blob = new Blob(recordedChunks, { type: actualMimeType });
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-      a.download = `복싱기록_${document.getElementById('player-name').value || '선수'}.webm`; a.click();
+      a.download = `스마트올림픽_복싱_${document.getElementById('player-name').value || '선수'}_${score}점.${ext}`; a.click();
     };
 
     document.getElementById('save-img-btn').onclick = () => {
-      const a = document.createElement('a'); a.href = recordCanvas.toDataURL();
-      a.download = `복싱기록_${document.getElementById('player-name').value || '선수'}.png`; a.click();
+      const name = document.getElementById('player-name').value || "선수"; const cw = 1280; const ch = 720;
+      
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = cw; tempCanvas.height = ch;
+      const tempCtx = tempCanvas.getContext('2d');
+      
+      tempCtx.drawImage(highlightCanvas, 0, 0, cw, ch);
+      
+      tempCtx.font = "80px 'Jua', sans-serif"; tempCtx.textAlign = "center"; 
+      tempCtx.fillStyle = "white"; tempCtx.strokeStyle = "black"; tempCtx.lineWidth = 6;
+      tempCtx.strokeText(`🏆 ${name}의 복싱 점수: ${score}점`, cw / 2, ch - 50); 
+      tempCtx.fillText(`🏆 ${name}의 복싱 점수: ${score}점`, cw / 2, ch - 50);
+      
+      const a = document.createElement('a'); a.href = tempCanvas.toDataURL();
+      a.download = `스마트올림픽_복싱_${name}_기록증.png`; a.click();
     };
 
     const pose = new Pose({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`});
     pose.setOptions({ selfieMode: true, modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
     pose.onResults(onResults);
     new Camera(videoElement, { onFrame: async () => { await pose.send({image: videoElement}); }, width: 1280, height: 720 }).start();
-    
-    stopBtn.onclick = () => location.reload();
   </script>
 </body>
 </html>
