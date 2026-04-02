@@ -58,7 +58,7 @@
     <canvas id="output_canvas"></canvas>
     
     <div id="overlay" class="overlay">
-      <h2>화면에 나타나는 미트를<br>빠르게 주먹으로 쳐주세요!</h2>
+      <h2>화면에 나타나는 미트를<br>빠르고 길게 뻗어 쳐주세요!</h2>
       <button id="start-btn">도전 시작!</button>
     </div>
     
@@ -80,7 +80,6 @@
   </div>
 
   <script>
-    // 🌟 선생님의 미트 이미지 불러오기
     const customMittImg = new Image(); 
     customMittImg.src = 'media/mitt.png';
 
@@ -114,7 +113,11 @@
     let gameState = 'waiting'; let score = 0; let timeLeft = "30.00"; let startTime = 0;
     let countdownTick = 3; let countdownDisplay = ""; let countdownInterval = null;
     let targets = [];
-    let hitEffects = []; // 🌟 타격 이펙트 배열 추가
+    let hitEffects = []; 
+    
+    // 🌟 꼼수 방지용: 주먹 속도를 계산하기 위한 이전 위치 저장 변수
+    let previousLeftHand = null;
+    let previousRightHand = null;
     
     let mediaRecorder; let recordedChunks = [];
     let audioCtx; let audioDest; let globalMicStream = null;
@@ -164,6 +167,7 @@
       stopBtn.style.display = 'block';
 
       score = 0; timeLeft = "30.00"; targets = []; hitEffects = [];
+      previousLeftHand = null; previousRightHand = null; // 게임 시작 시 초기화
       gameState = 'countdown'; countdownTick = 3; countdownDisplay = "3";
 
       playSound('sfx-count'); 
@@ -204,17 +208,47 @@
 
         if (gameState === 'playing') {
           const lm = results.poseLandmarks;
-          const leftHand = {x: lm[19].x * cw, y: lm[19].y * ch};
-          const rightHand = {x: lm[20].x * cw, y: lm[20].y * ch};
           
+          const leftHand = { x: lm[19].x, y: lm[19].y };
+          const rightHand = { x: lm[20].x, y: lm[20].y };
+          const lShoulder = { x: lm[11].x, y: lm[11].y };
+          const rShoulder = { x: lm[12].x, y: lm[12].y };
+
+          // 기준 크기: 어깨 너비
+          const shoulderWidth = Math.hypot(lShoulder.x - rShoulder.x, lShoulder.y - rShoulder.y) || 0.1;
+
+          // 1. 속도 계산 (Velocity)
+          let lVel = 0; 
+          if (previousLeftHand) lVel = Math.hypot(leftHand.x - previousLeftHand.x, leftHand.y - previousLeftHand.y);
+          let rVel = 0; 
+          if (previousRightHand) rVel = Math.hypot(rightHand.x - previousRightHand.x, rightHand.y - previousRightHand.y);
+
+          previousLeftHand = { x: leftHand.x, y: leftHand.y };
+          previousRightHand = { x: rightHand.x, y: rightHand.y };
+
+          // 2. 팔 뻗음 감지 (어깨로부터 손목/주먹까지의 거리가 어깨너비의 1.2배 이상일 것)
+          const isLExtended = Math.hypot(leftHand.x - lShoulder.x, leftHand.y - lShoulder.y) > (shoulderWidth * 1.2);
+          const isRExtended = Math.hypot(rightHand.x - rShoulder.x, rightHand.y - rShoulder.y) > (shoulderWidth * 1.2);
+
+          // 3. 펀치 인정 최소 속도 (0.03 = 프레임당 화면의 3% 이동)
+          const velThreshold = 0.03; 
+
           targets = targets.filter(t => {
             const tx = t.x * cw; const ty = t.y * ch;
-            if (Math.hypot(leftHand.x - tx, leftHand.y - ty) < t.radius + 40 || Math.hypot(rightHand.x - tx, rightHand.y - ty) < t.radius + 40) {
+            const hitRadiusPx = t.radius + 40; 
+
+            const distLeftPx = Math.hypot(leftHand.x * cw - tx, leftHand.y * ch - ty);
+            const distRightPx = Math.hypot(rightHand.x * cw - tx, rightHand.y * ch - ty);
+
+            // 🌟 꼼수 방지 최종 조건: 미트에 닿았고 + 충분히 빨랐고 + 팔을 뻗었는가?
+            const isLeftHit = (distLeftPx < hitRadiusPx) && (lVel > velThreshold) && isLExtended;
+            const isRightHit = (distRightPx < hitRadiusPx) && (rVel > velThreshold) && isRExtended;
+
+            if (isLeftHit || isRightHit) {
               score += 10; playSound('sfx-punch'); 
-              hitEffects.push({ x: t.x, y: t.y, time: Date.now() }); // 🌟 타격 이펙트 저장
+              hitEffects.push({ x: t.x, y: t.y, time: Date.now() }); 
               return false;
             }
-            // 🌟 5초(5000ms)가 지나면 사라지도록 시간 연장
             return (Date.now() - t.createdAt < 5000);
           });
         }
@@ -222,20 +256,16 @@
 
       if (gameState === 'playing') {
         const drawGameObjects = (ctx) => {
-          // 타겟(미트) 그리기
           targets.forEach(t => {
             if (customMittImg.complete && customMittImg.naturalHeight !== 0) {
-              // 이미지가 로드되었으면 이미지 그리기 (120x120 크기)
               ctx.drawImage(customMittImg, t.x*cw - 60, t.y*ch - 60, 120, 120);
             } else {
-              // 이미지 로드 실패 시 기존의 빨간 원
               ctx.beginPath(); ctx.arc(t.x*cw, t.y*ch, t.radius, 0, 2*Math.PI);
               ctx.fillStyle = '#DF0024'; ctx.fill();
               ctx.lineWidth = 5; ctx.strokeStyle = 'white'; ctx.stroke();
             }
           });
 
-          // 🌟 타격 이펙트(폭발) 그리기
           for (let i = hitEffects.length - 1; i >= 0; i--) {
             let effect = hitEffects[i]; 
             if (Date.now() - effect.time > 300) { 
