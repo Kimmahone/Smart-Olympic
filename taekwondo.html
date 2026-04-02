@@ -14,37 +14,28 @@
   
   <style>
     body { font-family: 'Jua', sans-serif; margin: 0; overflow: hidden; background-color: #111; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; color: white; }
-    
     .header-area { position: absolute; top: 20px; width: 100%; text-align: center; z-index: 10; transition: opacity 0.3s; }
     h1 { margin: 0; font-size: 2.5em; color: #ffeb3b; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
-    
     .top-home-btn { position: absolute; top: 20px; left: 20px; background: rgba(255,255,255,0.2); color: white; text-decoration: none; padding: 10px 20px; border-radius: 50px; font-size: 1.2em; z-index: 15; transition: opacity 0.3s, background 0.3s; }
     .top-home-btn:hover { background: rgba(255,255,255,0.4); }
-
     .canvas-container { position: relative; width: 100%; max-width: 1280px; aspect-ratio: 16/9; background: #000; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border-radius: 15px; overflow: hidden; }
     canvas { width: 100%; height: 100%; object-fit: cover; display: block; } 
     video { display: none; }
-    
     .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 20; }
     .overlay h2 { font-size: 3.5em; margin-bottom: 30px; text-align: center; line-height: 1.3; color: white; text-shadow: 2px 2px 5px rgba(0,0,0,0.5); }
-    
     button { font-family: 'Jua', sans-serif; font-size: 1.8em; padding: 15px 40px; border: none; border-radius: 50px; cursor: pointer; transition: transform 0.2s; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
     #start-btn { background: #ffeb3b; color: #333; }
     button:hover { transform: scale(1.05); }
-    
     #stop-btn { position: absolute; bottom: 20px; right: 20px; background: #DF0024; color: white; font-size: 1.2em; padding: 10px 20px; display: none; z-index: 10; }
-    
     .modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 30; }
     .modal-content { background: white; color: #333; padding: 40px; border-radius: 30px; text-align: center; width: 80%; max-width: 500px; }
     .modal-content h2 { color: #333; font-size: 3em; margin-top: 0; }
     .record-text { font-size: 2.5em; margin: 20px 0; color: #ff9800; }
     input[type="text"] { font-family: 'Jua', sans-serif; font-size: 1.5em; padding: 10px; width: 90%; text-align: center; border: 2px solid #ccc; border-radius: 15px; margin-bottom: 20px; }
-    
     .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
     .btn-group button { font-size: 1.1em; padding: 12px; border-radius: 15px; }
     .save-vid { background: #009F3D; color: white; }
     .save-img { background: #0085C7; color: white; }
-    
     .replay-btn { background: #ff9800; color: white; width: 100%; margin-bottom: 10px; }
     .exit-btn { background: #757575; color: white; width: 100%; font-size: 1.5em; text-decoration: none; display: block; padding: 15px 0; border-radius: 50px; }
   </style>
@@ -89,6 +80,10 @@
   </div>
 
   <script>
+    // 🌟 선생님의 송판 이미지 불러오기
+    const customBoardImg = new Image(); 
+    customBoardImg.src = 'media/board.png';
+
     const videoElement = document.getElementById('input_video');
     const canvasElement = document.getElementById('output_canvas');
     canvasElement.width = 1280; canvasElement.height = 720;
@@ -206,22 +201,18 @@
       const tx = t.x * cw; const ty = t.y * ch; 
       const boardWidth = t.radius * cw * 1.6; const boardHeight = t.radius * ch * 1.0;
       
-      ctx.save(); 
-      ctx.translate(tx, ty);
-      ctx.fillStyle = "#A1887F"; ctx.strokeStyle = "#5D4037"; ctx.lineWidth = 6;
-      ctx.fillRect(-boardWidth / 2, -boardHeight / 2, boardWidth, boardHeight); 
-      ctx.strokeRect(-boardWidth / 2, -boardHeight / 2, boardWidth, boardHeight);
-      
-      ctx.strokeStyle = "rgba(0,0,0,0.1)"; ctx.lineWidth = 3;
-      for(let j=0; j<3; j++) { 
-        let yOffset = (j - 1) * (boardHeight / 4); 
-        ctx.beginPath(); ctx.moveTo(-boardWidth/2 + 10, yOffset); ctx.lineTo(boardWidth/2 - 10, yOffset); ctx.stroke(); 
+      // 🌟 선생님의 송판 이미지로 그리기 적용
+      if (customBoardImg.complete && customBoardImg.naturalHeight !== 0) {
+        ctx.drawImage(customBoardImg, tx - boardWidth / 2, ty - boardHeight / 2, boardWidth, boardHeight);
+      } else {
+        // 이미지 로딩 실패 시 기존 브라운색 사각형 출력
+        ctx.save(); 
+        ctx.translate(tx, ty);
+        ctx.fillStyle = "#A1887F"; ctx.strokeStyle = "#5D4037"; ctx.lineWidth = 6;
+        ctx.fillRect(-boardWidth / 2, -boardHeight / 2, boardWidth, boardHeight); 
+        ctx.strokeRect(-boardWidth / 2, -boardHeight / 2, boardWidth, boardHeight);
+        ctx.restore();
       }
-      
-      ctx.strokeStyle = "white"; ctx.lineWidth = 4; ctx.setLineDash([15, 8]); 
-      ctx.beginPath(); ctx.moveTo(0, -boardHeight / 2 + 10); ctx.lineTo(0, boardHeight / 2 - 10); ctx.stroke(); 
-      ctx.setLineDash([]);
-      ctx.restore();
     }
 
     function onResults(results) {
@@ -294,7 +285,6 @@
         }
       }
 
-      // 🌟 [수정 핵심] 화면을 그리기(drawUI) 전에 시간을 먼저 업데이트합니다.
       if (gameState === 'playing') {
         let elapsed = (Date.now() - startTime) / 1000;
         let timeLeft = Math.max(0, 30 - elapsed);
@@ -304,19 +294,15 @@
       drawUI(canvasCtx, cw, ch);
       drawUI(recordCtx, cw, ch);
 
-      // 🌟 이미 0.00초로 그려진 화면을 바탕으로 캡처를 진행합니다.
       if (gameState === 'playing') {
         if (parseFloat(timeLeftStr) <= 0) {
           highlightCtx.drawImage(recordCanvas, 0, 0, cw, ch);
           
-          gameState = 'finished'; stopRecording();
-          stopBtn.style.display = 'none';
-          document.getElementById('bgm').pause();
-          playSound('sfx-cheer');
+          gameState = 'finished'; stopRecording(); stopBtn.style.display = 'none';
+          document.getElementById('bgm').pause(); playSound('sfx-cheer');
           document.getElementById('final-record').innerText = `최종 기록: ${hitCount}점`;
           resultModal.style.display = 'flex';
-          uiHeader.style.opacity = '1';
-          uiHome.style.opacity = '1';
+          uiHeader.style.opacity = '1'; uiHome.style.opacity = '1';
         }
       }
     }
@@ -361,9 +347,7 @@
 
     document.getElementById('save-img-btn').onclick = () => {
       const name = document.getElementById('player-name').value || "선수"; const cw = 1280; const ch = 720;
-      
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = cw; tempCanvas.height = ch;
+      const tempCanvas = document.createElement('canvas'); tempCanvas.width = cw; tempCanvas.height = ch;
       const tempCtx = tempCanvas.getContext('2d');
       
       tempCtx.drawImage(highlightCanvas, 0, 0, cw, ch);
