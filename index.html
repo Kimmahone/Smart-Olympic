@@ -2,18 +2,193 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>스마트 올림픽 점검 중</title>
-  <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🥇🥈🥉 스마트 올림픽</title>
   <style>
-    body { font-family: 'Jua', sans-serif; background-color: #0d47a1; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center; }
-    h1 { font-size: 4em; color: #ffeb3b; margin-bottom: 20px; }
-    p { font-size: 2em; color: #81d4fa; margin-bottom: 40px; }
-    .icon { font-size: 8em; margin-bottom: 20px; }
+    body { font-family: 'Apple SD Gothic Neo', 'NEXON Lv1 Gothic OTF', sans-serif; background-color: #f4f7f6; background-image: radial-gradient(#e0e0e0 1px, transparent 1px); background-size: 20px 20px; margin: 0; padding: 0; text-align: center; }
+    header { background: linear-gradient(135deg, #005bbb, #002366); color: white; padding: 40px 20px; margin-bottom: 40px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); border-bottom: 5px solid #ffcc00; position: relative; display: flex; flex-direction: column; align-items: center; }
+    
+    .rings-wrapper { position: absolute; top: 15px; right: 20px; width: 100px; height: 45px; }
+    .ring { width: 24px; height: 24px; border-radius: 50%; border: 4px solid; position: absolute; background: transparent; }
+    .ring.blue { border-color: #0081C8; left: 0; top: 0; z-index: 1;}
+    .ring.yellow { border-color: #FCB131; left: 16px; top: 12px; z-index: 2;}
+    .ring.black { border-color: #000000; left: 32px; top: 0; z-index: 1;}
+    .ring.green { border-color: #00A651; left: 48px; top: 12px; z-index: 2;}
+    .ring.red { border-color: #EE334E; left: 64px; top: 0; z-index: 1;}
+    
+    #bgm-toggle { position: absolute; top: 20px; left: 20px; padding: 10px 15px; background-color: rgba(255,255,255,0.2); border: 2px solid white; color: white; border-radius: 30px; font-weight: bold; cursor: pointer; transition: 0.3s; font-size: 1em; backdrop-filter: blur(5px); }
+    #bgm-toggle:hover { background-color: white; color: #005bbb; }
+
+    .class-logo { width: 80px; height: 80px; border-radius: 50%; border: 3px solid #ffcc00; object-fit: cover; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+
+    h1 { margin: 0; font-size: 2.8em; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+    p.subtitle { margin-top: 10px; font-size: 1.2em; opacity: 0.9; }
+    
+    .container { display: flex; flex-wrap: wrap; justify-content: center; gap: 30px; max-width: 1200px; margin: 0 auto; padding: 0 20px 20px 20px; }
+    .card { background: white; border-radius: 20px; width: 260px; padding: 30px 20px; text-decoration: none; color: #333; position: relative; overflow: hidden; box-shadow: 0 10px 20px rgba(0,0,0,0.08); transition: all 0.3s; border: 4px solid transparent; }
+    .card.active:hover { transform: translateY(-10px); box-shadow: 0 15px 30px rgba(0,0,0,0.15); }
+    .card.active .icon { font-size: 5em; margin-bottom: 15px; transition: transform 0.3s; }
+    .card.active:hover .icon { transform: scale(1.1); }
+    .card h2 { margin: 0 0 10px 0; font-size: 1.5em; }
+    
+    .card.sprint { border-color: #0085C7; } .card.sprint h2 { color: #0085C7; }
+    .card.swim { border-color: #F4C300; } .card.swim h2 { color: #d4a000; }
+    .card.gymnastics { border-color: #009F3D; } .card.gymnastics h2 { color: #009F3D; }
+    .card.boxing { border-color: #DF0024; } .card.boxing h2 { color: #DF0024; }
+    .card.taekwondo { border-color: #424242; } .card.taekwondo h2 { color: #424242; }
+    .card.surfing { border-color: #0288D1; } .card.surfing h2 { color: #0288D1; }
+
+    .status-badge { position: absolute; top: 20px; right: -40px; color: white; padding: 5px 0; width: 140px; text-align: center; font-size: 0.85em; font-weight: bold; transform: rotate(45deg); letter-spacing: 1px;}
+
+    /* 🌟 푸터 및 개인정보 처리방침 모달 스타일 */
+    footer { padding: 20px; margin-top: 20px; color: #777; font-size: 0.9em; }
+    footer a { color: #005bbb; text-decoration: underline; cursor: pointer; font-weight: bold; }
+    
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; display: none; justify-content: center; align-items: center; }
+    .modal-content { background: white; width: 90%; max-width: 800px; max-height: 80vh; border-radius: 15px; padding: 30px; position: relative; display: flex; flex-direction: column; text-align: left; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+    .close-btn { position: absolute; top: 15px; right: 20px; font-size: 2em; cursor: pointer; color: #333; line-height: 1; }
+    .privacy-text { overflow-y: auto; flex-grow: 1; font-size: 0.95em; line-height: 1.6; color: #444; padding-right: 15px; margin-top: 10px; }
+    .privacy-text h2 { color: #005bbb; margin-top: 0; text-align: center; }
+    .privacy-text h3 { color: #333; margin-top: 25px; font-size: 1.1em; border-left: 4px solid #005bbb; padding-left: 10px; }
+    .privacy-text table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9em; }
+    .privacy-text th, .privacy-text td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+    .privacy-text th { background-color: #f4f7f6; }
   </style>
 </head>
 <body>
-  <div class="icon">🛠️</div>
-  <h1>스마트 올림픽 점검 중</h1>
-  <p>지금 너무 많은 친구들이 달리고 있어요!<br>더 쾌적한 환경을 위해 잠시 휴식 중입니다.<br><br><b>5월 중 다시 만나요!</b></p>
+
+  <audio id="main-bgm" src="media/main_bgm.mp3" loop></audio>
+
+  <header>
+    <button id="bgm-toggle" onclick="toggleBgm()">🎵 음악 켜기</button>
+    <div class="rings-wrapper">
+      <div class="ring blue"></div><div class="ring yellow"></div><div class="ring black"></div><div class="ring green"></div><div class="ring red"></div>
+    </div>
+    
+    <img src="media/logo.png" alt="우리반 로고" class="class-logo" onerror="this.style.display='none'">
+    
+    <h1>🥇🥈🥉 스마트 올림픽: 스스로 땀 흘리는 우리 반!</h1>
+    <p class="subtitle">모두가 주인공이 되는 시간! 화면 앞에서 신나게 한계에 도전해 볼까요? 🏃‍♂️💦</p>
+  </header>
+
+  <div class="container">
+    <a href="sprint.html" class="card active sprint" onclick="stopMainBgm()">
+      <div class="status-badge" style="background:#0085C7;">순발력</div>
+      <div class="icon">🏃</div>
+      <h2>100m 달리기</h2>
+      <p>무릎을 높이 들어 올려<br>빛의 속도로 달려보세요!</p>
+    </a>
+    <a href="swim.html" class="card active swim" onclick="stopMainBgm()">
+      <div class="status-badge" style="background:#F4C300; color:#333;">심폐지구력</div>
+      <div class="icon">🏊</div>
+      <h2>50m 자유형 수영</h2>
+      <p>양팔을 힘차게 휘저으며<br>물살을 갈라보세요!</p>
+    </a>
+    <a href="gymnastics.html" class="card active gymnastics" onclick="stopMainBgm()">
+      <div class="status-badge" style="background:#009F3D;">근지구력</div>
+      <div class="icon">🤸</div>
+      <h2>30초 체조</h2>
+      <p>팔벌려뛰기 4박자!<br>30초 동안 몇 개 가능?</p>
+    </a>
+    <a href="boxing.html" class="card active boxing" onclick="stopMainBgm()">
+      <div class="status-badge" style="background:#DF0024;">민첩성</div>
+      <div class="icon">🥊</div>
+      <h2>30초 복싱</h2>
+      <p>랜덤하게 나타나는 타겟을<br>주먹으로 빠르게 터뜨려요!</p>
+    </a>
+    <a href="taekwondo.html" class="card active taekwondo" onclick="stopMainBgm()">
+      <div class="status-badge" style="background:#424242; color:#fff;">유연성</div>
+      <div class="icon">🥋</div>
+      <h2>송판 격파</h2>
+      <p>화면에 나타나는 송판을<br>강력한 하이킥으로 부수세요!</p>
+    </a>
+    <a href="surfing.html" class="card active surfing" onclick="stopMainBgm()">
+      <div class="status-badge" style="background:#0288D1; color:#fff;">평형성</div>
+      <div class="icon">🏄‍♂️</div>
+      <h2>서핑 밸런스</h2>
+      <p>몸을 좌우로 기울여<br>상어를 피하고 동전을 드세요!</p>
+    </a>
+  </div>
+
+  <footer>
+    <p>스마트 올림픽은 학생의 개인정보를 수집하거나 서버로 전송하지 않습니다.</p>
+    <a onclick="openPrivacyModal()">📄 개인정보 처리방침 확인하기</a>
+  </footer>
+
+  <div id="privacy-modal" class="modal-overlay">
+    <div class="modal-content">
+      <span class="close-btn" onclick="closePrivacyModal()">&times;</span>
+      <div class="privacy-text">
+        <h2>스마트 올림픽 개인정보 처리방침</h2>
+        
+        <h3>제1조 (개인정보의 처리 목적, 항목, 보유 및 이용 기간)</h3>
+        <p>'스마트 올림픽(이하 본 서비스)'은 「개인정보 보호법」에 따라 서비스 제공을 위해 필요 최소한의 범위에서 개인정보를 처리합니다. 본 서비스는 온디바이스(On-device) 기술을 활용하여 작동하며, 외부 서버나 클라우드로 어떠한 개인정보도 수집, 전송, 보관하지 않습니다.</p>
+        <table>
+          <tr><th>처리 목적</th><th>처리 항목</th><th>처리 및 보유 기간</th></tr>
+          <tr><td>① 웹캠 모션 인식 및 마이크 음성 녹음 (서비스 제공)</td><td>기기 카메라 영상 및 마이크 음성 데이터 (뼈대 추출 및 기록 영상 병합용)</td><td><strong>브라우저 종료 및 새로고침 시 즉각 영구 파기</strong> (기기 RAM에서 즉시 소멸하며 서버 전송 불가)</td></tr>
+          <tr><td>② 개인 기록증명서 (이미지/영상) 발급</td><td>이름 (학생 본인이 자율적으로 선택 입력)</td><td><strong>브라우저 종료 시 즉각 영구 파기</strong> (발급된 파일은 학생 개인의 기기 로컬에만 저장됨)</td></tr>
+        </table>
+
+        <h3>제2조 (개인정보의 제3자 제공 및 처리 위탁에 관한 사항)</h3>
+        <p>① 본 서비스는 정보주체의 개인정보를 외부 서버로 수집하거나 보관하지 않으므로, 원천적으로 개인정보를 제3자에게 제공하지 않습니다.<br>
+        ② 본 서비스는 원활한 개인정보 업무처리를 위하여 외부 업체에 개인정보 처리 업무를 위탁하고 있지 않습니다. 서비스 내 모션 인식을 위해 사용된 인공지능(Google MediaPipe) 모듈은 사용자의 기기 자체 연산력만을 활용하여 독립적(Offline)으로 구동됩니다.</p>
+
+        <h3>제3조 (만 14세 미만 아동의 개인정보 처리에 관한 사항)</h3>
+        <p>① 본 서비스는 만 14세 미만 아동이 이용하기에 안전한 '개인정보 비수집(No-Data-Collection)' 방식을 채택하고 있습니다.<br>
+        ② 학생의 얼굴 영상, 음성, 이름이 외부망(인터넷)을 통해 서버로 유출될 기술적 가능성이 차단되어 있으므로, 복잡한 법정대리인 동의 절차 없이 교실 및 가정에서 안전하게 활용할 수 있습니다.</p>
+
+        <h3>제4조 (개인정보의 파기 절차 및 방법)</h3>
+        <p>① 본 서비스는 원칙적으로 개인정보 처리 목적이 달성된 경우(브라우저 종료 등) 지체 없이 해당 개인정보를 파기합니다.<br>
+        ② <strong>파기 절차 및 방법:</strong> 본 서비스는 데이터베이스(DB)를 운영하지 않습니다. 학생이 입력한 이름과 카메라 영상 및 마이크 음성 데이터는 웹 브라우저의 임시 메모리에서만 연산되며, 학생이 브라우저 탭을 닫거나 새로고침 하는 즉시 메모리에서 삭제되어 복구할 수 없는 상태로 영구 파기됩니다.</p>
+
+        <h3>제5조 (정보주체와 법정대리인의 권리·의무 및 그 행사방법)</h3>
+        <p>① 정보주체(만 14세 미만 아동의 경우 법정대리인)는 본 서비스에 대해 언제든지 개인정보 열람·정정·삭제·처리정지 등의 권리를 요구할 수 있습니다.<br>
+        ② 권리 행사는 본 서비스의 특성상 웹 브라우저를 종료하는 것만으로 즉각적인 삭제 및 처리정지가 완료됩니다. 다만, 공식적인 권리 행사를 원하시는 경우 「개인정보 보호법 시행령」 제41조제1항에 따라 서면, 전화, 전자우편 등을 통하여 하실 수 있으며, 본 서비스는 청구를 받은 날로부터 10일 이내에 지체 없이 회신 및 조치하겠습니다.<br>
+        ③ 본 서비스는 외부로 수집·보유하고 있는 개인정보가 없으므로, 정보주체가 권리 행사를 요구할 경우 '보유하고 있는 개인정보가 없음'을 안내해 드립니다.</p>
+
+        <h3>제6조 (개인정보의 안전성 확보 조치)</h3>
+        <p>본 서비스는 개인정보의 안전성 확보를 위해 다음과 같은 조치를 취하고 있습니다.<br>
+        ① <strong>온디바이스(On-device) 처리:</strong> 클라우드 서버 저장 방식을 배제하고 브라우저 샌드박스(Sandbox) 환경에서만 작동하게 하여 외부 해킹 및 데이터 유출 위험을 근본적으로 제거했습니다.<br>
+        ② <strong>보안 통신 적용:</strong> 서비스 웹페이지 접근 시 전 구간 암호화 통신(HTTPS)을 적용하여 안전한 접속 환경을 제공합니다.</p>
+
+        <h3>제7조 (개인정보 보호책임자 및 권리 행사 청구 접수 부서)</h3>
+        <p>① 본 서비스는 개인정보 처리에 관한 업무를 총괄해서 책임지고, 관련한 정보주체의 불만처리 및 피해구제, 권리 행사 청구 접수를 위하여 아래와 같이 개인정보 보호책임자 및 담당 부서를 지정하고 있습니다.</p>
+        <p>▶ <strong>개인정보 보호책임자 및 권리 행사 청구 접수·처리 부서</strong><br>
+        - 소속 및 직위: 포항양덕초등학교 5학년 3반 담임교사<br>
+        - 성명: 김정준<br>
+        - 주소: 경상북도 포항시 북구 장량로 123 포항양덕초등학교<br>
+        - 연락처: 054-255-0072<br>
+        - 이메일: kimjj0709@gmail.com</p>
+        <p>② 정보주체는 본 서비스를 이용하시면서 발생한 모든 개인정보보호 관련 문의, 불만처리, 권리 행사 등에 관한 사항을 위의 연락처로 문의하실 수 있습니다. 지체 없이 답변 및 처리해 드릴 것입니다.</p>
+
+        <h3>제8조 (개인정보 처리방침 변경)</h3>
+        <p>이 방침은 2026년 3월 29일부터 적용됩니다.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let isMusicPlaying = false;
+    const bgm = document.getElementById('main-bgm');
+    bgm.volume = 0.5;
+
+    function toggleBgm() {
+      const btn = document.getElementById('bgm-toggle');
+      if (isMusicPlaying) {
+        bgm.pause(); btn.innerText = "🎵 음악 켜기"; isMusicPlaying = false;
+      } else {
+        bgm.play().catch(e => console.log(e)); btn.innerText = "🔇 음악 끄기"; isMusicPlaying = true;
+      }
+    }
+    function stopMainBgm() { bgm.pause(); }
+
+    // 🌟 모달 열고 닫기 함수
+    function openPrivacyModal() {
+      document.getElementById('privacy-modal').style.display = 'flex';
+    }
+    function closePrivacyModal() {
+      document.getElementById('privacy-modal').style.display = 'none';
+    }
+  </script>
 </body>
 </html>
