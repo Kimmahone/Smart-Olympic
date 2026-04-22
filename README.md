@@ -3,7 +3,7 @@
 
 ![스마트 올림픽 썸네일](media/logo.png)
 - 🚀 서비스 링크 (Demo)
-👉 **[스마트 올림픽 바로가기](https://smart-olympic.vercel.app/)**
+👉 **[스마트 올림픽 바로가기](https://smartolympic.vercel.app/)**
 
 ---
 
